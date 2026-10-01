@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Qubit to Classifier</title>
+  <meta name="description" content="An interactive, visual course on quantum circuits — qubits, Bloch spheres, gates, entanglement, a step-through circuit lab, algorithms and noise — ending with hands-on quantum machine learning.">
+  <meta property="og:title" content="Qubit to Classifier">
+  <meta property="og:description" content="A visual course in quantum circuits and quantum machine learning, simulated live in your browser.">
+  <meta property="og:type" content="website">
+  <meta name="theme-color" content="#f2f3f5" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0d0f13" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='%23f2f3f5' stroke='%23141820' stroke-width='2'/%3E%3Cellipse cx='16' cy='16' rx='13' ry='4.5' fill='none' stroke='%238f5f00' stroke-width='1.5'/%3E%3Cpath d='M16 16 L23.5 7.5' stroke='%232a78d6' stroke-width='2.5' stroke-linecap='round'/%3E%3Ccircle cx='23.5' cy='7.5' r='3' fill='%232a78d6'/%3E%3C/svg%3E">
+
+  <!-- Fonts (Google Fonts, SIL Open Font License). Each family loads separately so one failure cannot block the others. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:ital,wght@0,400;0,600;0,700;1,400&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:wght@400;600&display=swap">
+
+  <link rel="stylesheet" href="src/styles.css">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <button type="button" class="btn ghost" aria-label="Open the chapter list" aria-expanded="false" aria-controls="rail">
+        <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <a href="#home" class="brand" style="text-decoration:none"><span class="brand-name">Qubit to Classifier</span></a>
+      <span class="where"></span>
+    </header>
+    <nav class="rail" id="rail" aria-label="Course contents"></nav>
+    <main id="main" tabindex="-1"></main>
+  </div>
+  <noscript><p style="padding:24px">This course is interactive and needs JavaScript.</p></noscript>
+
+  <!-- Engine: simulator, QML toolkit, helpers, visual components, circuit lab -->
+  <script src="src/sim.js"></script>
+  <script src="src/qml.js"></script>
+  <script src="src/util.js"></script>
+  <script src="src/viz.js"></script>
+  <script src="src/circuit.js"></script>
+  <script src="src/base.js"></script>
+  <!-- Chapters (registered in this order) -->
+  <script src="src/ch1.js"></script>
+  <script src="src/ch2.js"></script>
+  <script src="src/ch3.js"></script>
+  <script src="src/ch4.js"></script>
+  <script src="src/ch5.js"></script>
+  <script src="src/ch6.js"></script>
+  <script src="src/ch7a.js"></script>
+  <script src="src/ch7b.js"></script>
+  <!-- App shell: navigation, routing, home page -->
+  <script src="src/app.js"></script>
+</body>
+</html>
