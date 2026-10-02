@@ -298,14 +298,14 @@ ${C.pitfall('You cannot read out the Fourier coefficients', `<p>The QFT transfor
 <h2>Phase estimation</h2>
 <p>Suppose a gate U has an eigenvector |u⟩ with eigenvalue e<sup>2πiφ</sup>, for some unknown φ between 0 and 1. <b>Phase estimation</b> finds φ. It uses t counting qubits, all starting in |+⟩, and a second register holding |u⟩:</p>
 <ol>
-  <li>Counting qubit j controls U applied 2ʲ times. By phase kickback (chapter ${ref('multigates')}), it picks up the relative phase e<sup>2πi · 2ʲφ</sup>.</li>
+  <li>Each counting qubit controls U applied a power of 2 times: the bottom one once, the next one up twice, then 4 times, and so on, up to 2<sup>t−1</sup> times for the top qubit q0. By phase kickback (chapter ${ref('multigates')}), a counting qubit that controls U applied 2ʲ times picks up the relative phase e<sup>2πi · 2ʲφ</sup>.</li>
   <li>The counting register now holds exactly the Fourier-basis pattern of the number 2ᵗφ, each qubit turned at its own speed.</li>
   <li>An inverse QFT turns the pattern back into bits, and measuring gives a t-bit approximation of φ.</li>
 </ol>
 ${C.worked('φ = 0.375 with three counting qubits', [
   'In binary, 0.375 = 0.011, since 0/2 + 1/4 + 1/8 = 0.375.',
-  'The counting qubits pick up the phases 2π · φ, 2π · 2φ and 2π · 4φ, which are 2π · 0.375, 2π · 0.75 and 2π · 1.5.',
-  'That is exactly the pattern of QFT|x⟩ for x = 2³φ = 3, so the inverse QFT gives |011⟩ with certainty.',
+  'From the top, q0, q1 and q2 control U applied 4, 2 and 1 times, so they pick up the phases 2π · 4φ, 2π · 2φ and 2π · φ, which are 2π · 1.5, 2π · 0.75 and 2π · 0.375.',
+  'That is exactly the pattern of QFT|x⟩ for x = 2³φ = 3, in which qubit q turns by 2π · x/2<sup>q+1</sup>: 2π · 1.5, 2π · 0.75 and 2π · 0.375. So the inverse QFT gives |011⟩ with certainty.',
   'Read 011 as the binary fraction 0.011 = 0.375.'
 ], 'When φ has an exact t-bit binary expansion, phase estimation is exact.')}
 <p>If φ is not an exact t-bit fraction, the measurement gives one of the nearest t-bit fractions: the closest with probability at least 4/π² ≈ 0.405. Adding counting qubits sharpens the peak.</p>

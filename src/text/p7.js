@@ -589,10 +589,11 @@ ${C.quizSection()}`,
 <h2>Your own state-vector simulator</h2>
 <p>About thirty lines of NumPy. The state of n qubits is an array of 2ⁿ amplitudes. Reshaping it into n axes of size 2 gives one axis per qubit, and a single-qubit gate becomes a 2 × 2 matrix applied along one axis. That is exactly the pairs-of-amplitudes rule of chapter ${ref('tensor')}.</p>
 ${C.bench('np-sim', 'A state-vector simulator in NumPy')}
-<p>Extensions to try: a general controlled gate, measurement with collapse, the parameter-shift gradient, and finally the classifier of chapter ${ref('train')}. Compare every result with the panels in this course.</p>
+<p>Good extensions, in order: a general controlled gate, measurement with collapse, the parameter-shift gradient, and finally the classifier of chapter ${ref('train')}. The first two are worked out as exercises below; the last two are yours. Compare every result with the panels in this course.</p>
+<div data-practice></div>
 
 <h2>The classifier from chapter 7.5, in PennyLane</h2>
-<p>Same circuit, same loss, same optimizer. The option <code>diff_method="parameter-shift"</code> makes PennyLane compute gradients the way hardware would.</p>
+<p>Same circuit, same loss, same optimizer. The option <code>diff_method="parameter-shift"</code> makes PennyLane compute gradients the way hardware would. Expect the 120 epochs to take several minutes on a laptop, because every gradient runs the circuit twice per parameter for every training point. The output under the code shows the loss falling from 0.63 to about 0.25.</p>
 <div data-code></div>
 
 <h2>Tools</h2>

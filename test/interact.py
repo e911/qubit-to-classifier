@@ -7,7 +7,8 @@ Usage:
 
 Checks the Circuit Lab presets against known results, teleportation for several
 measurement outcomes, chapter navigation, quizzes, saved "Try this" boxes, the
-one-step training panel, the glossary search and the formula-sheet topic buttons.
+one-step training panel, the glossary search, the formula-sheet topic buttons and the
+Python practice sections (every example and exercise shown, hints, solutions, Copy).
 """
 import contextlib
 import functools
@@ -156,6 +157,39 @@ def main():
         page.wait_for_timeout(300)
         top = page.evaluate("() => document.getElementById('fs-ml').getBoundingClientRect().top")
         check("formula sheet topic button scrolls to its section", 0 <= top < 200, f"heading at {top:.0f}px")
+
+        # 9. Python practice: every chapter shows all its examples and exercises, coloured
+        ids = page.evaluate("() => C.list.filter(c => C.practices[c.id]).map(c => c.id)")
+        missing = []
+        for cid in ids:
+            go(cid)
+            got = page.evaluate("""(id) => {
+              const sec = document.querySelector('section.practice'), want = C.practices[id].items;
+              if (!sec) return { ok: false, why: 'no section' };
+              const ex = sec.querySelectorAll('.exercise').length, sols = sec.querySelectorAll('details.ex-sol .code').length;
+              const blocks = sec.querySelectorAll('.code').length, coloured = sec.querySelectorAll('.code-src [class^="t-"]').length;
+              const nEx = want.filter(i => i.kind === 'exercise').length, nStarter = want.filter(i => i.starter).length;
+              const ok = ex === nEx && sols === nEx && blocks === want.length + nStarter && coloured > 0 && !!sec.nextElementSibling;
+              return { ok, why: `${ex} exercises, ${sols} solutions, ${blocks} code blocks` };
+            }""", cid)
+            if not got["ok"]:
+                missing.append(f"{cid}: {got['why']}")
+        check(f"practice sections in {len(ids)} chapters", len(ids) >= 28 and not missing, "; ".join(missing[:3]))
+
+        # 10. Hint and solution open, and Copy copies the code without line numbers
+        go("complex")
+        sec = page.locator("section.practice")
+        sec.locator(".exercise").first.locator("summary", has_text="hint").click()
+        sec.locator(".exercise").first.locator("summary", has_text="solution").click()
+        opened = page.evaluate("() => [...document.querySelector('section.practice .exercise').querySelectorAll('details')].every(d => d.open)")
+        out = page.evaluate("() => document.querySelector('section.practice .exercise details.ex-sol .code-out-pre').textContent")
+        check("practice: hint and solution open, with the solution's output", opened and len(out.strip()) > 0)
+        ctx.grant_permissions(["clipboard-read", "clipboard-write"])
+        sec.locator(".code-copy").first.click()
+        page.wait_for_timeout(200)
+        copied = page.evaluate("() => navigator.clipboard.readText()")
+        want = page.evaluate("() => C.practices.complex.items[0].code")
+        check("practice: Copy puts the exact code on the clipboard", copied.strip() == want.strip(), f"{len(copied)} vs {len(want)} characters")
 
         check("no JavaScript errors", not errors, "; ".join(errors[:3]))
         browser.close()

@@ -27,6 +27,11 @@
   --font-body: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: "Atkinson Hyperlegible Mono", ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
   --font-math: "Newsreader", "STIX Two Text", "Cambria Math", "Cambria", "Noto Serif", "DejaVu Serif", Georgia, serif;
+  /* code editor colours (VS Code Light+ / Dark+) */
+  --code-bg: #ffffff; --code-bar: #f3f3f3; --code-line: #e2e4e8; --code-ink: #1f1f1f; --code-gutter: #237893;
+  --code-kw: #0000ff; --code-ctl: #af00db; --code-str: #a31515; --code-com: #008000; --code-num: #098658;
+  --code-fn: #795e26; --code-type: #267f99; --code-var: #001080; --code-op: #1f1f1f;
+  --code-out-bg: #f6f7f9; --code-out-ink: #24292f;
   --rail-w: 272px;
   --radius: 12px;
   color-scheme: light;
@@ -39,6 +44,10 @@
     --q: #3987e5; --q-soft: rgba(57, 135, 229, 0.16); --q2: #d95926; --q3: #199e70; --neg: #e66767;
     --div-mid: #2a2e37; --good: #3ac43a; --bad: #ef7070; --grid: #232833;
     --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 30px -14px rgba(0, 0, 0, .7);
+    --code-bg: #1e1e1e; --code-bar: #252526; --code-line: #33363c; --code-ink: #d4d4d4; --code-gutter: #858585;
+    --code-kw: #569cd6; --code-ctl: #c586c0; --code-str: #ce9178; --code-com: #6a9955; --code-num: #b5cea8;
+    --code-fn: #dcdcaa; --code-type: #4ec9b0; --code-var: #9cdcfe; --code-op: #d4d4d4;
+    --code-out-bg: #181818; --code-out-ink: #cccccc;
     color-scheme: dark;
   }
 }
@@ -49,6 +58,10 @@
   --q: #3987e5; --q-soft: rgba(57, 135, 229, 0.16); --q2: #d95926; --q3: #199e70; --neg: #e66767;
   --div-mid: #2a2e37; --good: #3ac43a; --bad: #ef7070; --grid: #232833;
   --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 30px -14px rgba(0, 0, 0, .7);
+  --code-bg: #1e1e1e; --code-bar: #252526; --code-line: #33363c; --code-ink: #d4d4d4; --code-gutter: #858585;
+  --code-kw: #569cd6; --code-ctl: #c586c0; --code-str: #ce9178; --code-com: #6a9955; --code-num: #b5cea8;
+  --code-fn: #dcdcaa; --code-type: #4ec9b0; --code-var: #9cdcfe; --code-op: #d4d4d4;
+  --code-out-bg: #181818; --code-out-ink: #cccccc;
   color-scheme: dark;
 }
 
@@ -303,6 +316,54 @@ select.sel {
   font-family: var(--font-mono); font-size: 0.82rem; line-height: 1.55; color: var(--ink);
 }
 .codeblock .copy { position: absolute; top: 8px; right: 8px; }
+
+/* ---------- code editor blocks and Python practice ---------- */
+.code { margin: 14px 0 18px; border: 1px solid var(--code-line); border-radius: 10px; overflow: hidden; background: var(--code-bg); min-width: 0; }
+.code-bar { display: flex; align-items: stretch; gap: 10px; padding-right: 6px; background: var(--code-bar); border-bottom: 1px solid var(--code-line); }
+.code-file {
+  padding: 7px 14px; background: var(--code-bg); color: var(--code-ink); border-right: 1px solid var(--code-line);
+  font-family: var(--font-mono); font-size: 0.76rem; margin-bottom: -1px; border-bottom: 1px solid var(--code-bg); white-space: nowrap;
+}
+.code-lang { align-self: center; margin-left: auto; font-size: 0.72rem; color: var(--code-gutter); }
+.code-copy {
+  align-self: center; font: inherit; font-size: 0.74rem; padding: 3px 10px; border: 1px solid var(--code-line); border-radius: 6px;
+  background: var(--code-bg); color: var(--code-ink); cursor: pointer;
+}
+.code-copy:hover { border-color: var(--accent); }
+.code-copy:focus-visible, .code-pre:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.chapter pre.code-pre, pre.code-pre {
+  margin: 0; padding: 12px 16px 14px 0; overflow-x: auto; font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.6;
+  color: var(--code-ink); background: transparent; tab-size: 4; border-radius: 0;
+}
+.code-src { counter-reset: ln; display: block; min-width: max-content; font-family: inherit; }
+.code-src .cl::before {
+  counter-increment: ln; content: counter(ln); display: inline-block; width: 3.4em; padding-right: 1.3em; text-align: right;
+  color: var(--code-gutter); user-select: none; -webkit-user-select: none;
+}
+.t-kw { color: var(--code-kw); } .t-ctl { color: var(--code-ctl); } .t-str { color: var(--code-str); }
+.t-com { color: var(--code-com); } .t-num { color: var(--code-num); } .t-fn, .t-dec { color: var(--code-fn); }
+.t-type, .t-mod { color: var(--code-type); } .t-var { color: var(--code-var); } .t-op { color: var(--code-op); }
+.code-out { border-top: 1px solid var(--code-line); background: var(--code-out-bg); }
+.code-out-bar { padding: 6px 14px 2px; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--code-gutter); }
+.chapter pre.code-out-pre, pre.code-out-pre {
+  margin: 0; padding: 4px 14px 12px; overflow-x: auto; font-family: var(--font-mono); font-size: 0.78rem; line-height: 1.55;
+  color: var(--code-out-ink); background: transparent; white-space: pre;
+}
+.practice { margin-top: 36px; }
+.practice > h2 { margin-top: 0; }
+.chapter .exercise { margin: 18px 0 22px; padding: 14px 16px 8px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--surface); }
+.ex-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.ex-label { font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; color: var(--accent); }
+.ex-title { font-weight: 700; font-family: var(--font-display); font-size: 1.12rem; color: var(--ink); }
+.chapter .ex-task p { margin: 0 0 10px; }
+.chapter .exercise .code { margin: 10px 0 12px; }
+.ex-more { margin: 6px 0 8px; }
+.ex-more > summary { cursor: pointer; font-weight: 600; font-size: 0.9rem; color: var(--ink-2); padding: 4px 0; }
+.ex-more > summary:hover { color: var(--ink); }
+.ex-more[open] > summary { color: var(--ink); }
+.chapter .ex-more p { margin: 6px 0 10px; }
+.chapter code { font-family: var(--font-mono); font-size: 0.88em; padding: 1px 5px; border-radius: 5px; background: var(--surface-2); }
+.chapter .code code, .chapter pre code { padding: 0; background: none; border-radius: 0; font-size: inherit; }
 
 /* ---------- quiz ---------- */
 .quiz { display: grid; gap: 14px; }

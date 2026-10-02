@@ -246,7 +246,7 @@
         '… and CNOT q1→q2: Alice and Bob now share the Bell pair (|00⟩ + |11⟩)/√2 on q1, q2.',
         'Alice entangles the message with her half: CNOT q0→q1.',
         'H on q0. In every one of the four branches, Bob\'s qubit already holds the message up to an X and/or a Z.',
-        'Alice <b>measures</b> q0 and q1 (outcomes on the gates) and sends Bob those two classical bits. Bob\'s q2 is now XᵐZᵐ|ψ⟩ for her outcomes.',
+        'Alice <b>measures</b> q0 and q1 (outcomes on the gates) and sends Bob those two classical bits, m₀ and m₁. Bob\'s q2 is now X<sup>m₁</sup>Z<sup>m₀</sup>|ψ⟩: the message with a known error.',
         'Bob applies X if q1 read 1 (a CNOT from the collapsed q1 does exactly that).',
         'Bob applies Z if q0 read 1. q2 now matches the ghost arrow for every outcome: press "New outcomes" to check. q0 no longer holds the message, so nothing was copied.'
       ]
@@ -268,7 +268,7 @@
     {
       id: 'grover2', name: 'Grover search, 2 qubits', n: 2,
       build: () => B(2).layer('H', [0, 1]).cz(0, 1).layer('H', [0, 1]).layer('X', [0, 1]).cz(0, 1).layer('X', [0, 1]).layer('H', [0, 1]),
-      notes: ['Start: |00⟩. We search for the marked item |11⟩ among 4.', 'H on both: all four items with amplitude 1/2.', 'Oracle (CZ): flips the sign of the marked item |11⟩ only.', 'Diffusion begins: H on both …', '… X on both …', '… CZ (reflects about |11⟩ in this basis) …', '… X on both …', '… H on both. The marked item |11⟩ now has probability 1. For N = 4, a single Grover iteration is exact.']
+      notes: ['Start: |00⟩. We search for the marked item |11⟩ among 4.', 'H on both: all four items with amplitude 1/2.', 'Oracle (CZ): flips the sign of the marked item |11⟩ only.', 'Diffusion begins: H on both …', '… X on both …', '… CZ flips the sign of |11⟩. Between the two layers of X, that flips the sign of |00⟩ …', '… X on both …', '… H on both. The marked item |11⟩ now has probability 1. For N = 4, a single Grover iteration is exact.']
     },
     {
       id: 'qft', name: 'QFT of |101⟩ (x = 5)', n: 3,
@@ -335,7 +335,7 @@
     L.push('', `qc = QuantumCircuit(${circ.n}${hasM ? ', ' + circ.n : ''})`, ...body);
     L.push('', '# Final state (Qiskit writes qubit 0 as the RIGHTMOST bit,', '# so the label |q0 q1 ...> used in this course appears reversed):');
     if (hasM) L.push('# mid-circuit measurements: run on a simulator, e.g.', '# from qiskit_aer import AerSimulator; AerSimulator().run(qc, shots=1000).result().get_counts()');
-    else L.push('from qiskit.quantum_info import Statevector', 'print(Statevector(qc).probabilities_dict())');
+    else L.push('from qiskit.quantum_info import Statevector', 'probs = Statevector(qc).probabilities_dict()', 'print({str(k): round(float(v), 4) for k, v in probs.items()})');
     return L.join('\n');
   }
 
@@ -697,7 +697,7 @@
         pane.appendChild(h('div', { class: 'caption', text: `The whole circuit as one ${U.N}×${U.N} matrix. Column j is where the input |j⟩ goes. Colour = phase, opacity = magnitude. Circuits read left to right, but the matrices multiply right to left.` }));
       } else if (this.tab === 'code') {
         pane.innerHTML = '';
-        pane.appendChild(codeBlock(toQiskit(this.circ)));
+        pane.appendChild(codeBlock(toQiskit(this.circ), { file: 'circuit_qiskit.py' }));
         pane.appendChild(h('div', { class: 'caption', text: 'Paste into Python with Qiskit installed (pip install qiskit). Useful for checking your intuition against a real toolkit.' }));
       }
     }

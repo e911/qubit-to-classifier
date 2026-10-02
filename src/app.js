@@ -79,6 +79,7 @@
         '<b>Worked examples</b> show every step of the arithmetic. Try each one on paper before you read the steps.',
         '<b>Math behind it</b> sections are optional on a first read. Open them when you want the full derivation.',
         '<b>Common confusion</b> boxes flag the mistakes nearly everyone makes once.',
+        '<b>Practice in Python</b>, near the end of each chapter, has examples to run and exercises with hints and solutions, each with the output it prints. They need only Python 3 and NumPy; the <b>Copy</b> button copies the code.',
         '<b>Drag</b> any Bloch sphere to turn it; on some you can drag the arrow itself. Double-click resets the view. Step through circuits with ▶, or click a column number to jump there.',
         'Your progress and ticked experiments are remembered in this browser only.'
       ].map(t => `<li>${t}</li>`).join('') }));
@@ -156,12 +157,23 @@
       const benches = (String(ch.html || '').match(/data-bench=/g) || []).length;
       const meta = [`About ${readingMinutes(ch.html)} minutes of reading`];
       if (benches) meta.push(`${benches} interactive panel${benches > 1 ? 's' : ''}`);
+      if (C.practices[ch.id]) meta.push('Python practice');
       if (ch.quiz && ch.quiz.length) meta.push(`${ch.quiz.length}-question quiz`);
       art.appendChild(h('header', { class: 'ch-head' },
         h('p', { class: 'eyebrow', text: p.id === 8 ? `Appendix · ${p.title}` : `${p.label} · ${p.title} · Chapter ${ch.num}` }),
         h('h1', { text: ch.title }), h('p', { class: 'lede', html: ch.lede || '' }),
         p.id === 8 ? null : h('p', { class: 'ch-meta' }, ...meta.map(t => h('span', { text: t })))));
       const body = h('div', { html: ch.html || '' });
+      // Python practice goes after the "Try this" box, before the recap
+      const prac = C.practices[ch.id];
+      if (prac) {
+        const sec = h('div', { html: C.renderPractice(prac) }).firstElementChild;
+        const slot = body.querySelector('[data-practice]');
+        const anchor = body.querySelector(':scope > .recap') || (body.querySelector(':scope > [data-quiz]') || {}).previousElementSibling || null;
+        if (slot) slot.replaceWith(sec);
+        else if (anchor && anchor.parentNode === body) body.insertBefore(sec, anchor);
+        else body.appendChild(sec);
+      }
       while (body.firstChild) art.appendChild(body.firstChild);
       try { ch.init && ch.init(art, ctx); } catch (e) { console.error('chapter init failed', ch.id, e); }
       afterInit(ch, art, ctx);
@@ -189,6 +201,14 @@
   function closeRail() { rail.classList.remove('open'); if (scrim) { scrim.remove(); scrim = null; } const b = $('.topbar button'); if (b) b.setAttribute('aria-expanded', 'false'); }
   $('.topbar button').addEventListener('click', () => rail.classList.contains('open') ? closeRail() : openRail());
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRail(); });
+
+  // copy buttons on code blocks
+  document.addEventListener('click', async e => {
+    const b = e.target.closest && e.target.closest('[data-copy]'); if (!b) return;
+    const src = b.closest('.code') && b.closest('.code').querySelector('.code-src'); if (!src) return;
+    const ok = await root.U.copyText(src.textContent, b);
+    if (!ok) { const r = document.createRange(); r.selectNodeContents(src); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); }
+  });
 
   buildRail();
   window.addEventListener('hashchange', route);

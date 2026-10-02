@@ -289,14 +289,8 @@
     try { await navigator.clipboard.writeText(text); done(true); } catch (e) { done(false); return false; }
     return true;
   }
-  function codeBlock(code, label = 'Copy') {
-    const pre = h('pre', {}, h('code', { text: code }));
-    const btn = button(label, async () => {
-      const okc = await copyText(pre.textContent, btn);
-      if (!okc) { const r = document.createRange(); r.selectNodeContents(pre); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
-    }, 'btn copy');
-    return h('div', { class: 'codeblock' }, pre, btn);
-  }
+  /* an editor-style Python code block (src/code.js); o = { file, output } */
+  function codeBlock(code, o = {}) { return root.Code.el(code, o); }
 
   const storage = {
     get(k, d) { try { const v = localStorage.getItem('q2c:' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },

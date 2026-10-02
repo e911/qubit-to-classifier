@@ -259,6 +259,13 @@ for epoch in range(120):
     w, cost = opt.step_and_cost(lambda v: loss(v, X, y), w)
     if epoch % 20 == 0:
         print(f"epoch {epoch:3d}  loss {cost:.3f}")`;
+  /* printed by the code above with PennyLane 0.45 (it takes several minutes) */
+  const PENNY_OUT = `epoch   0  loss 0.634
+epoch  20  loss 0.274
+epoch  40  loss 0.262
+epoch  60  loss 0.258
+epoch  80  loss 0.254
+epoch 100  loss 0.250`;
   const REFS = [
     ['Foundations', [
       ['Nielsen & Chuang, <i>Quantum Computation and Quantum Information</i> (Cambridge University Press, 10th anniversary edition, 2010)', null, 'The standard reference for Parts I–V.'],
@@ -296,7 +303,7 @@ for epoch in range(120):
   C.add({
     id: 'next', part: 7, num: '7.8', title: 'Where to go next',
     init(root) {
-      root.querySelector('[data-code]').appendChild(codeBlock(PENNY));
+      root.querySelector('[data-code]').appendChild(codeBlock(PENNY, { file: 'classifier_pennylane.py', output: PENNY_OUT }));
       const refs = root.querySelector('[data-refs]');
       REFS.forEach(([title, items]) => {
         refs.appendChild(h('h3', { text: title }));
@@ -603,6 +610,12 @@ for epoch in range(120):
   });
 
   /* ------------------------------------------------------------------ 7.8: a state-vector simulator in NumPy */
+  const NPSIM_OUT = `|00⟩  +0.707 +0.000i
+|01⟩  +0.000 +0.000i
+|10⟩  +0.000 +0.000i
+|11⟩  +0.707 +0.000i
+[473   0   0 527]
+0.5`;
   const NPSIM = `import numpy as np
 
 def zero_state(n):
@@ -641,14 +654,14 @@ n = 2
 psi = zero_state(n)
 psi = apply_1q(psi, H, 0, n)
 psi = apply_cx(psi, 0, 1, n)
-for k, amp in enumerate(psi):
-    print(f"|{k:0{n}b}⟩  {amp.real:+.3f} {amp.imag:+.3f}i")   # |00⟩ and |11⟩ get 0.707
+for k, amp in enumerate(psi):                     # |00⟩ and |11⟩ get 0.707
+    print(f"|{k:0{n}b}⟩  {amp.real + 0:+.3f} {amp.imag + 0:+.3f}i")   # + 0 turns -0.0 into 0.0
 
 # 1,000 shots
 rng = np.random.default_rng(0)
 counts = np.bincount(rng.choice(2**n, size=1000, p=np.abs(psi) ** 2), minlength=2**n)
 print(counts)                                     # about 500 for 00 and 500 for 11
 
-print(expect_z(apply_1q(zero_state(1), RY(np.pi / 3), 0, 1), 0, 1))   # cos(π/3) = 0.5`;
-  C.widget('np-sim', body => { body.appendChild(codeBlock(NPSIM)); body.appendChild(h('p', { class: 'caption', text: 'Runs with Python 3 and NumPy. The qubit order matches this course: q0 is the leftmost bit.' })); });
+print(round(expect_z(apply_1q(zero_state(1), RY(np.pi / 3), 0, 1), 0, 1), 6))   # cos(π/3) = 0.5`;
+  C.widget('np-sim', body => { body.appendChild(codeBlock(NPSIM, { file: 'statevector.py', output: NPSIM_OUT })); body.appendChild(h('p', { class: 'caption', text: 'Runs with Python 3 and NumPy. The qubit order matches this course: q0 is the leftmost bit.' })); });
 })(window);

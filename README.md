@@ -4,7 +4,9 @@ An interactive, visual course on quantum computing from the very beginning, endi
 
 Everything on the page is computed live in the browser by an exact state-vector simulator: drag Bloch spheres, step through circuits gate by gate, watch entanglement shrink the arrows, and train a quantum classifier with parameter-shift gradients.
 
-No frameworks, no build step, no server code: plain HTML, CSS and JavaScript.
+Every chapter also has Python to practise with: worked examples to run and exercises with hints and solutions, shown in editor-style syntax colours next to the output they print. The same code is in the `practice/` folder as scripts and Jupyter notebooks.
+
+No frameworks, no build step to run it, no server code: plain HTML, CSS and JavaScript.
 
 ## Contents
 
@@ -28,6 +30,16 @@ Every chapter follows the same pattern:
 - **Common confusion**: the mistakes nearly everyone makes once.
 - **Interactive panels** (60 in total) next to the idea they illustrate.
 - **Key idea**, **Try this** experiments, a **Recap**, and a short **quiz** that explains every answer (167 questions in all).
+- **Practice in Python**: examples to run and exercises with full solutions, most with a hint (27 examples and 63 exercises), each with the output it prints.
+
+## Practice in Python
+
+The `practice/` folder has the Python from every chapter as plain scripts, one folder per chapter (`practice/0.1-complex/`, `practice/1.1-qubit/`, …):
+
+- `demo*.py` are worked examples; `exercise*.py` are exercises whose solution is the code below the task in the docstring.
+- `practice/notebooks/` has one Jupyter notebook per part: the examples ready to run, the exercises with empty or starter cells, and every solution with its expected output at the end. They open in Jupyter, VS Code or Google Colab.
+
+Everything needs only Python 3 and NumPy (`pip install numpy`); one optional exercise in 4.1 uses Qiskit. See `practice/README.md` for how to add an exercise.
 
 ## Run it locally
 
@@ -73,12 +85,17 @@ src/
   util.js             DOM helpers, number/ket formatting, theme tokens, phase colours, controls
   viz.js              Bloch sphere, circle notation, bar and line charts, heatmaps, matrices
   circuit.js          circuit renderer, Circuit Lab, worked examples, Qiskit export
-  base.js             chapter registry and the prose helpers (worked examples, quizzes, figures …)
+  code.js             Python syntax colouring and the editor-style code blocks (file tab, line numbers, Copy, output)
+  base.js             chapter registry and the prose helpers (worked examples, quizzes, figures, practice …)
   ch0.js … ch7b.js    interactive code for each part: chapter registration and the panels
   text/
     p0.js … p7.js     the words for each part: ledes, explanations, worked examples, quizzes
     appendix.js       conventions, symbols, Greek letters and the formula sheet
+    practice.js       the Python practice sections (generated from practice/; don't edit by hand)
   app.js              navigation, hash routing, home page, progress
+practice/
+  0.1-complex/ …      one folder per chapter: demo*.py and exercise*.py, each a complete program
+  notebooks/          one Jupyter notebook per part (generated)
 test/
   sim.test.js         358 physics checks (Bell/GHZ, QFT, Grover, teleportation, identities …)
   qml.test.js         gradient checks plus training, kernel and barren-plateau experiments
@@ -86,6 +103,8 @@ test/
   interact.py         drives the widgets and checks what they display
 tools/
   bundle.py           packs everything into one self-contained HTML file
+  build_practice.py   runs every practice script and rebuilds src/text/practice.js and the notebooks
+CHANGELOG.md          what changed between versions, including content corrections
 ```
 
 ## Editing
@@ -97,6 +116,7 @@ A chapter is assembled from three places:
 | `src/chN.js` | `C.add({ id, part, num, title, init })`: registers the chapter; `init(root, ctx)` fills its panels | `C.add({ id: 'bloch', part: 1, num: '1.3', title: 'The Bloch sphere', init(root) { … } })` |
 | `src/text/pN.js` | `C.text(id, { lede, html, quiz })`: the words | `C.text('bloch', { lede: '…', html: \`…\`, quiz: [ … ] })` |
 | `src/chN.js` | `C.widget(benchId, fn(body, ctx, root))`: an extra panel, filled automatically when the chapter opens | `C.widget('bloch-pair', body => { … })` |
+| `practice/<num>-<id>/` | Python examples and exercises; run `python3 tools/build_practice.py` after editing | `practice/1.3-bloch/exercise1.py` |
 
 The order of the `C.add` calls (and of the script tags) is the order in the menu. Inside `html`, these helpers from `src/base.js` keep every chapter consistent:
 
@@ -107,6 +127,9 @@ The order of the `C.add` calls (and of the script tags) is the order in the menu
 - `C.F(formula)`, `C.M(inline)`, `C.mat(rows)`, `C.vec(items)`, `C.align(rows)`, `C.table(head, rows)`
 - `C.ref('lab')`: a link to another chapter, shown as its number and title
 - `C.quizSection()` plus `quiz: [{ q, options, answer, why }]`. Write the options in any order; they are shown in a fixed shuffled order so the right answer moves around.
+- `C.code(source, { file, output })`: a Python block with syntax colours, a Copy button and an optional output panel.
+
+The practice section goes where the chapter's text has `<div data-practice></div>`; without one it goes just before the recap.
 
 Colours and fonts are CSS variables at the top of `src/styles.css`; the dark theme redefines the same variables.
 
@@ -117,6 +140,7 @@ Conventions: qubit 0 is the top wire and the leftmost bit, `|q0 q1 …⟩` (Qisk
 ```bash
 node test/sim.test.js        # simulator
 node test/qml.test.js        # QML toolkit (prints small result tables)
+python3 tools/build_practice.py --check   # runs every practice script; fails if an output no longer matches the page
 
 # browser tests (optional)
 pip install playwright && python -m playwright install chromium
