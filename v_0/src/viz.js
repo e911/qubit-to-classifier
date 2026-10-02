@@ -21,7 +21,7 @@
       host.appendChild(this.canvas);
       this.ctx = this.canvas.getContext('2d');
       this.az = this.o.az; this.el = this.o.el;
-      this.vectors = []; this.trail = []; this.trails = []; this.points = []; this.axis = null; this.ellipsoid = null; this.plane = null; this.arcs = null;
+      this.vectors = []; this.trail = []; this.points = []; this.axis = null; this.ellipsoid = null; this.plane = null; this.arcs = null;
       this._raf = 0; this.W = 0;
       this.resize();
       if (typeof ResizeObserver !== 'undefined') new ResizeObserver(() => this.resize()).observe(host);
@@ -57,36 +57,30 @@
       return [ca * x1 + sa * y1, -sa * x1 + ca * y1, z1];
     }
     _bind() {
-      const c = this.canvas; let mode = null, sx = 0, sy = 0, az0 = 0, el0 = 0, dragIdx = 0;
+      const c = this.canvas; let mode = null, sx = 0, sy = 0, az0 = 0, el0 = 0;
       const local = e => { const r = c.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
-      // index (among vectors with drag: true) of the tip under the pointer, or -1
       const nearTip = (x, y) => {
-        let best = -1, bd = 22, k = -1;
-        for (const v of this.vectors) {
-          if (!v.drag) continue; k++;
-          const p = this.proj(v.v), d = Math.hypot(p[0] - x, p[1] - y);
-          if (d < bd) { bd = d; best = k; }
-        }
-        return best;
+        const v = this.vectors.find(v => v.drag);
+        if (!v) return false;
+        const p = this.proj(v.v); return Math.hypot(p[0] - x, p[1] - y) < 22;
       };
       c.addEventListener('pointerdown', e => {
-        const [x, y] = local(e), k = this.o.onDrag ? nearTip(x, y) : -1;
-        mode = (this.o.onDrag && (k >= 0 || this.o.dragAnywhere)) ? 'state' : 'view';
-        dragIdx = Math.max(0, k);
+        const [x, y] = local(e);
+        mode = (this.o.onDrag && (nearTip(x, y) || this.o.dragAnywhere)) ? 'state' : 'view';
         sx = e.clientX; sy = e.clientY; az0 = this.az; el0 = this.el;
         try { c.setPointerCapture(e.pointerId); } catch (err) { /* noop */ }
-        if (mode === 'state') { this.o.onDrag(this.unproj(x, y), dragIdx); e.preventDefault(); }
+        if (mode === 'state') { this.o.onDrag(this.unproj(x, y)); e.preventDefault(); }
         c.style.cursor = 'grabbing';
       });
       c.addEventListener('pointermove', e => {
         const [x, y] = local(e);
-        if (!mode) { c.style.cursor = (this.o.onDrag && nearTip(x, y) >= 0) ? 'move' : 'grab'; return; }
+        if (!mode) { c.style.cursor = (this.o.onDrag && nearTip(x, y)) ? 'move' : 'grab'; return; }
         if (mode === 'view') {
           this.az = az0 + (e.clientX - sx) * 0.011;
           this.el = clamp(el0 + (e.clientY - sy) * 0.011, -1.25, 1.25);
           this.request();
           if (this.o.onView) this.o.onView(this.az, this.el);
-        } else this.o.onDrag(this.unproj(x, y), dragIdx);
+        } else this.o.onDrag(this.unproj(x, y));
       });
       const end = () => { mode = null; c.style.cursor = 'grab'; };
       c.addEventListener('pointerup', end); c.addEventListener('pointercancel', end);
@@ -180,23 +174,12 @@
           ctx.beginPath(); ctx.arc(q[0], q[1], (p.r || rr) + 1.5, 0, 2 * PI); ctx.fillStyle = rgba(T.surface, a); ctx.fill();
           ctx.beginPath(); ctx.arc(q[0], q[1], p.r || rr, 0, 2 * PI);
           if (p.hollow) { ctx.strokeStyle = rgba(p.color, a); ctx.lineWidth = 1.6; ctx.stroke(); } else { ctx.fillStyle = rgba(p.color, a); ctx.fill(); }
-          if (p.label) {
-            ctx.font = `600 ${this.o.compact ? 11 : 13}px ${T.fontMath}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-            ctx.fillStyle = rgba(p.labelColor || p.color, q[2] < 0 ? 0.55 : 1);
-            ctx.fillText(p.label, q[0] + (p.r || rr) + 5, q[1] - 1);
-          }
         }
       }
       // trail
       if (this.trail && this.trail.length > 1) {
         ctx.lineWidth = 2; ctx.strokeStyle = rgba(this.trailColor || T.q, 0.55); ctx.beginPath();
         this.trail.forEach((p, i) => { const q = this.proj(p); i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); });
-        ctx.stroke();
-      }
-      for (const tr of (this.trails || [])) { // several coloured paths: [{ pts, color }]
-        if (!tr.pts || tr.pts.length < 2) continue;
-        ctx.lineWidth = 2; ctx.strokeStyle = rgba(tr.color || T.q, 0.5); ctx.beginPath();
-        tr.pts.forEach((p, i) => { const q = this.proj(p); i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); });
         ctx.stroke();
       }
       // rotation axis
@@ -405,7 +388,7 @@
     const pw = W - m.l - m.r, ph = H - m.t - m.b;
     const [x0, x1] = o.x, [y0, y1] = o.y;
     const ly = v => Math.log10(Math.max(v, 1e-300));
-    const X = o.xLog ? (v => m.l + (ly(v) - ly(x0)) / (ly(x1) - ly(x0)) * pw) : (v => m.l + (v - x0) / (x1 - x0) * pw);
+    const X = v => m.l + (v - x0) / (x1 - x0) * pw;
     const Y = o.yLog ? (v => m.t + ph - (ly(v) - ly(y0)) / (ly(y1) - ly(y0)) * ph) : (v => m.t + ph - (v - y0) / (y1 - y0) * ph);
     const s = svg('svg', { class: 'plot', width: W, height: H, viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': o.title || o.yTitle || 'line chart' }, host);
     const yt = o.yTicks || (o.yLog ? (() => { const a = [], e0 = Math.ceil(ly(y0)), e1 = Math.floor(ly(y1)), st = Math.max(1, Math.ceil((e1 - e0) / 5)); for (let e = e1; e >= e0; e -= st) a.push(10 ** e); return a; })() : niceTicks(y0, y1, 4));
@@ -416,7 +399,7 @@
       tx.innerHTML = o.yFmt ? o.yFmt(t) : (o.yLog ? '10<tspan dy="-5" font-size="8">' + Math.round(ly(t)) + '</tspan>' : trimTick(t));
     }
     svg('line', { x1: m.l, x2: W - m.r, y1: m.t + ph, y2: m.t + ph, class: 'axis' }, s);
-    const xt = o.xTicks || (o.xLog ? (() => { const a = []; for (let e = Math.ceil(ly(x0)); e <= Math.floor(ly(x1)); e++) a.push(10 ** e); return a; })() : niceTicks(x0, x1, Math.max(3, Math.floor(pw / 70))));
+    const xt = o.xTicks || niceTicks(x0, x1, Math.max(3, Math.floor(pw / 70)));
     for (const t of xt) {
       const x = X(t);
       svg('line', { x1: x, x2: x, y1: m.t + ph, y2: m.t + ph + 4, class: 'axis' }, s);
@@ -435,12 +418,6 @@
     const clipId = 'clip' + Math.random().toString(36).slice(2, 8);
     const cp = svg('clipPath', { id: clipId }, svg('defs', {}, s)); svg('rect', { x: m.l, y: m.t - 2, width: pw, height: ph + 4 }, cp);
     const g = svg('g', { 'clip-path': `url(#${clipId})` }, s);
-    for (const bd of (o.bands || [])) { // shaded band: points [x, lo, hi]
-      if (!bd.points || bd.points.length < 2) continue;
-      const top = bd.points.map((p, i) => (i ? 'L' : 'M') + X(p[0]).toFixed(2) + ',' + Y(p[2]).toFixed(2)).join('');
-      const bot = bd.points.slice().reverse().map(p => 'L' + X(p[0]).toFixed(2) + ',' + Y(p[1]).toFixed(2)).join('');
-      svg('path', { d: top + bot + 'Z', fill: rgba(bd.color || T.q, bd.alpha ?? 0.12) }, g);
-    }
     for (const se of series) {
       if (!se.points || !se.points.length) continue;
       const d = se.points.map((p, i) => (i ? 'L' : 'M') + X(p[0]).toFixed(2) + ',' + Y(p[1]).toFixed(2)).join('');
@@ -461,7 +438,7 @@
       const cross = svg('line', { y1: m.t, y2: m.t + ph, stroke: T.ink2, 'stroke-width': 1, visibility: 'hidden' }, s);
       const hit = svg('rect', { x: m.l, y: m.t, width: pw, height: ph, class: 'hit' }, s);
       hit.addEventListener('pointermove', e => {
-        const r = s.getBoundingClientRect(), fr = (e.clientX - r.left - m.l) / pw, xv = o.xLog ? 10 ** (ly(x0) + fr * (ly(x1) - ly(x0))) : x0 + fr * (x1 - x0);
+        const r = s.getBoundingClientRect(), xv = x0 + (e.clientX - r.left - m.l) / pw * (x1 - x0);
         let html = ''; let xs = null;
         for (const se of series) {
           if (!se.points || !se.points.length) continue;
@@ -584,68 +561,5 @@
     const stops = []; for (let a = 0; a <= 360; a += 20) stops.push(`${phaseColor(-a * PI / 180)} ${a}deg`);
     return `<span class="phasewheel-inline" aria-hidden="true" style="width:${size}px;height:${size}px;background:conic-gradient(from 90deg, ${stops.join(', ')})"></span>`;
   }
-  /* =====================================================================
-     2-D plane (complex numbers or real 2-vectors) + arrows + dragging
-     ===================================================================== */
-  function plane2d(host, o = {}) {
-    host.innerHTML = '';
-    const T = Theme.tokens(), S = Math.min(o.max || 400, Math.max(220, host.clientWidth || 320)), R = o.range || 2;
-    const c = S / 2, k = (S / 2 - (o.pad ?? 24)) / R;
-    const X = x => c + x * k, Y = y => c - y * k;
-    const s = svg('svg', { class: 'plot', width: S, height: S, viewBox: `0 0 ${S} ${S}`, role: 'img', 'aria-label': o.label || 'plane' }, host);
-    const step = o.grid ?? (R <= 2 ? 0.5 : R <= 4 ? 1 : 2);
-    if (step) for (let v = -Math.floor(R / step) * step; v <= R + 1e-9; v += step) {
-      if (Math.abs(v) < 1e-9) continue;
-      svg('line', { x1: X(v), x2: X(v), y1: Y(-R), y2: Y(R), class: 'gridline' }, s);
-      svg('line', { y1: Y(v), y2: Y(v), x1: X(-R), x2: X(R), class: 'gridline' }, s);
-    }
-    svg('line', { x1: X(-R), x2: X(R), y1: Y(0), y2: Y(0), class: 'axis' }, s);
-    svg('line', { y1: Y(-R), y2: Y(R), x1: X(0), x2: X(0), class: 'axis' }, s);
-    if (o.unit !== false) svg('circle', { cx: c, cy: c, r: k, fill: 'none', stroke: T.lineStrong, 'stroke-width': 1 }, s);
-    const tickStep = o.tickStep || (R <= 2 ? 1 : R <= 4 ? 1 : 2);
-    if (o.ticks !== false) for (let v = -Math.floor(R / tickStep) * tickStep; v <= R + 1e-9; v += tickStep) {
-      if (Math.abs(v) < 1e-9) continue;
-      const lab = (v < 0 ? '−' : '') + Math.abs(v);
-      const t1 = svg('text', { x: X(v), y: Y(0) + 14, 'text-anchor': 'middle', class: 'tick-label' }, s); t1.textContent = lab;
-      const t2 = svg('text', { x: X(0) - 5, y: Y(v) + 4, 'text-anchor': 'end', class: 'tick-label' }, s); t2.textContent = lab + (o.imag === false ? '' : 'i');
-    }
-    const xl = svg('text', { x: X(R) - 2, y: Y(0) - 6, 'text-anchor': 'end', class: 'axis-title' }, s); xl.textContent = o.xLabel || 'Re';
-    const yl = svg('text', { x: X(0) + 6, y: Y(R) + 10, 'text-anchor': 'start', class: 'axis-title' }, s); yl.textContent = o.yLabel || 'Im';
-    const fg = svg('g', {}, s);
-    const toWorld = (px, py) => { const r = s.getBoundingClientRect(); return [((px - r.left) * S / r.width - c) / k, (c - (py - r.top) * S / r.height) / k]; };
-    return { s, fg, X, Y, k, c, S, R, toWorld };
-  }
-  function arrow(s, x1, y1, x2, y2, o = {}) {
-    const col = o.color || Theme.tokens().ink, w = o.width || 2.5, L = Math.hypot(x2 - x1, y2 - y1);
-    const g = svg('g', { opacity: o.opacity ?? 1 }, s);
-    if (L < 1) { svg('circle', { cx: x2, cy: y2, r: 3, fill: col }, g); return g; }
-    const hl = Math.min(o.head ?? 10, L * 0.45), ux = (x2 - x1) / L, uy = (y2 - y1) / L, bx = x2 - ux * hl, by = y2 - uy * hl;
-    svg('line', { x1, y1, x2: bx, y2: by, stroke: col, 'stroke-width': w, 'stroke-linecap': 'round' }, g);
-    svg('path', { d: `M${x2},${y2}L${bx - uy * hl * 0.45},${by + ux * hl * 0.45}L${bx + uy * hl * 0.45},${by - ux * hl * 0.45}Z`, fill: col }, g);
-    return g;
-  }
-  /* drag handles: getPts() -> [[x, y], ...] in world coords; onMove(i, [x, y]) */
-  function dragPoints(P, getPts, onMove, radius = 24) {
-    let active = -1;
-    const s = P.s;
-    s.style.touchAction = 'none'; s.style.cursor = 'crosshair';
-    s.addEventListener('pointerdown', e => {
-      const pts = getPts(), r = s.getBoundingClientRect(), sc = r.width / P.S;
-      let best = -1, bd = radius;
-      pts.forEach((p, i) => { if (!p) return; const d = Math.hypot(P.X(p[0]) * sc + r.left - e.clientX, P.Y(p[1]) * sc + r.top - e.clientY); if (d < bd) { bd = d; best = i; } });
-      if (best < 0) return;
-      active = best; try { s.setPointerCapture(e.pointerId); } catch (err) { /* noop */ }
-      e.preventDefault();
-    });
-    s.addEventListener('pointermove', e => { if (active >= 0) onMove(active, P.toWorld(e.clientX, e.clientY)); });
-    const end = () => { active = -1; };
-    s.addEventListener('pointerup', end); s.addEventListener('pointercancel', end);
-  }
-  /* redraw when the host changes width */
-  function onResize(host, fn) {
-    if (typeof ResizeObserver === 'undefined') return;
-    let w = host.clientWidth;
-    new ResizeObserver(() => { const nw = host.clientWidth; if (Math.abs(nw - w) > 3) { w = nw; fn(); } }).observe(host);
-  }
-  root.V = { plane2d, arrow, dragPoints, onResize, phaseSwatch, BlochView, CircleGrid, svg, bars, linePlot, niceTicks, field, drawPoints, matrixHeat, matHTML, m2HTML, vecHTML, unitaryHTML, phasorSVG, phaseWheel, fmtVal, dprOf };
+  root.V = { phaseSwatch, BlochView, CircleGrid, svg, bars, linePlot, niceTicks, field, drawPoints, matrixHeat, matHTML, m2HTML, vecHTML, unitaryHTML, phasorSVG, phaseWheel, fmtVal, dprOf };
 })(window);

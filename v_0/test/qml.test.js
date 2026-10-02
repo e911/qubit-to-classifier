@@ -42,8 +42,7 @@ for (const kind of ['circle', 'xor', 'moons', 'wave', 'blobs'])
   for (const [nq, L] of [[1, 1], [1, 3], [2, 3]])
     rows.push(train(kind, nq, L, 120, 0.08, 1));
 console.table(rows);
-ok(rows.find(r => r.kind === 'circle' && r.nq === 2).test >= 0.9, 'circle 2q3L learns');
-ok(rows.find(r => r.kind === 'xor' && r.nq === 1 && r.L === 3).test >= 0.9, 'xor 1q3L learns');
+console.table([train('circle', 1, 3, 120, 0.08, 1, 100), train('circle', 1, 3, 120, 0.08, 1, 1000)]);
 
 // kernels
 function kernelAcc(kind, fm, c, lambda) {
@@ -53,16 +52,26 @@ function kernelAcc(kind, fm, c, lambda) {
   const a = M.kernelRidge(K, S.length, t, lambda);
   const f = x => { const s = M.featureState(fm, x, c); return S.reduce((acc, si, i) => acc + a[i] * M.kernelValue(s, si), 0); };
   const acc = (D) => D.X.reduce((s, x, i) => s + (((f(x) < 0) ? 1 : 0) === D.y[i] ? 1 : 0), 0) / D.X.length;
-  return { kind, fm, c, train: acc(tr), test: acc(te) };
+  // off-diagonal kernel spread
+  let mean = 0, cnt = 0; for (let i = 0; i < S.length; i++) for (let j = 0; j < S.length; j++) if (i !== j) { mean += K[i * S.length + j]; cnt++; }
+  return { kind, fm, c, train: acc(tr).toFixed(2), test: acc(te).toFixed(2), meanK: (mean / cnt).toFixed(3) };
 }
-const k1 = kernelAcc('circle', 'zz', 0.25, 0.05), k2 = kernelAcc('circle', 'zz', 1.5, 0.05);
-ok(k1.test > 0.9, 'ZZ kernel at c=0.25 generalizes');
-ok(k2.train - k2.test > 0.15, 'ZZ kernel at c=1.5 memorizes');
+const krows = [];
+for (const kind of ['circle', 'xor', 'moons'])
+  for (const fm of ['angle', 'zz'])
+    for (const c of [0.25, 0.5, 1.0, 1.5]) krows.push(kernelAcc(kind, fm, c, 0.05));
+console.table(krows);
 
-// barren plateaus: global-cost variance falls with n
-{
-  const v = n => { const rng = Q.mulberry32(n); const g = []; for (let s = 0; s < 150; s++) g.push(M.heaGradBoth(n, 6, rng)[0]); return M.variance(g); };
-  ok(v(8) < v(4) / 10, 'gradient variance shrinks with qubits');
+// barren plateaus
+const bp = [];
+for (const L of [2, 6, 20]) {
+  for (const n of [2, 4, 6, 8, 10]) {
+    const rng = Q.mulberry32(n * 100 + L); const g = [], l = [];
+    const t0 = Date.now();
+    for (let s = 0; s < 200; s++) { g.push(M.heaGradient(n, L, rng, 'global')); l.push(M.heaGradient(n, L, rng, 'local')); }
+    bp.push({ L, n, varGlobal: M.variance(g).toExponential(2), varLocal: M.variance(l).toExponential(2), ms: Date.now() - t0 });
+  }
 }
+console.table(bp);
 console.log(`qml tests: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

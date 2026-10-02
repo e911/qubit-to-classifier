@@ -1,7 +1,7 @@
 /* Part VI — Noise and hardware */
 (function (G) {
   'use strict';
-  const { h, num, angle, pct, slider, seg, button, Theme, animate, reduceMotion, cx } = G.U;
+  const { h, num, angle, pct, slider, seg, button, Theme, animate, reduceMotion } = G.U;
   const { BlochView, linePlot } = G.V;
   const Q = G.QSim, C = G.C, K = C.K, PI = Math.PI;
 
@@ -22,6 +22,18 @@
   /* ------------------------------------------------------------------ 6.1 */
   C.add({
     id: 'noise', part: 6, num: '6.1', title: 'Noise and mixed states',
+    lede: 'Real qubits leak information into their surroundings. Their states become mixtures, and the Bloch sphere of possible states shrinks and deforms into an ellipsoid.',
+    html: `
+      <p>A <b>mixed state</b> is a probabilistic mixture of pure states, for example "|0⟩ or |1⟩, 50/50". That is not the same as the superposition ${K('+')}: measure along X and ${K('+')} always gives +, while the mixture gives a coin flip.
+      Mixed states are described by a <b>density matrix</b></p>
+      <div class="formula">ρ = ½(I + xX + yY + zZ)</div>
+      <p>Pure states have <span class="m">|r| = 1</span> and sit on the surface. Mixed states lie inside the ball, and the centre <span class="m">r = 0</span> is the maximally mixed state I/2, a perfectly random bit.
+      The <b>purity</b> <span class="m">Tr(ρ²) = (1 + |r|²)/2</span> runs from ½ at the centre to 1 on the surface. You already met mixed states: a qubit that is entangled with another looks exactly like this.</p>
+      <p>A <b>noise channel</b> maps the whole ball into itself. The standard single-qubit channels squeeze, shrink or shift it:</p>
+      ${C.bench('nz', 'Noise channels on the Bloch ball', 'Orange wireframe = where every pure state ends up')}
+      <p>Why this matters: interference needs well-defined relative phases, and dephasing destroys exactly those. A heavily dephased quantum computer is an expensive random-number generator. Noise also sets how deep a useful circuit can be, and for machine learning it flattens cost landscapes (chapter 7.7).</p>
+      ${C.keyIdea('Noise turns pure states into mixtures: the arrow shrinks inside the ball. Each channel has its own shape — dephasing flattens the ball onto the z axis, energy loss drags it toward |0⟩.')}
+      ${C.tryThis(['Pick "Phase flip" with p = 0.5. What is left of |+⟩?', 'Apply amplitude damping 20 times. Where does every state end up?', 'Which channel leaves |0⟩ untouched but damages |+⟩?'])}`,
     init(root) {
       const body = C.body(root, 'nz');
       const grid = h('div', { class: 'g-sphere' }); body.appendChild(grid);
@@ -53,6 +65,29 @@
   /* ------------------------------------------------------------------ 6.2 */
   C.add({
     id: 'hardware', part: 6, num: '6.2', title: 'Decoherence and real hardware',
+    lede: 'Two time constants, T1 and T2, put a clock on every computation. Native gates, limited connectivity and imperfect readout decide how circuits are compiled and why error mitigation and correction exist.',
+    html: `
+      <p><b>T1</b>, the relaxation time, is how long it takes an excited qubit to decay from ${K('1')} to ${K('0')}: amplitude damping in time. <b>T2</b>, the coherence time, is how long relative phase survives. Any energy loss also destroys phase, so always <span class="m">T2 ≤ 2·T1</span>.</p>
+      <p>Leave a superposition idle and its arrow traces a spiral: the equatorial part shrinks on the T2 clock while the arrow relaxes toward ${K('0')} on the T1 clock. If the qubit's frequency is slightly off the reference (a detuning), the arrow also precesses. The resulting oscillation is the Ramsey experiment that labs use to measure coherence.</p>
+      ${C.bench('t12', 'T1 and T2 decay', 'Press Play to let the qubit sit idle')}
+      <h2>From circuit to chip</h2>
+      <ul>
+        <li><b>Native gates.</b> Each device implements a small set of operations directly, typically a few single-qubit rotations plus one entangling gate such as CZ. A compiler (the <b>transpiler</b>) rewrites your circuit into them, using identities like those in chapter 4.3.</li>
+        <li><b>Connectivity.</b> Two-qubit gates usually work only between physically coupled qubits. A CNOT between distant qubits needs SWAPs, and every SWAP costs three CNOTs.</li>
+        <li><b>Depth and error.</b> Two-qubit gates are usually the noisiest operation, so compilers minimise their count and the circuit's depth, which also keeps the run well inside T2.</li>
+        <li><b>Readout error.</b> Measurements themselves sometimes report the wrong bit; calibrating a confusion matrix and inverting it corrects the statistics.</li>
+      </ul>
+      ${C.bench('route', 'Routing a CNOT on a line of qubits', 'Pick two qubits that are not neighbours')}
+      <h2>Mitigation versus correction</h2>
+      <p><b>Error mitigation</b> accepts noisy runs and post-processes the statistics, for example by running at several noise levels and extrapolating to zero noise. It needs no extra qubits, but the number of shots grows quickly with circuit size.
+      <b>Error correction</b> encodes one logical qubit in many physical qubits (for example the surface code), detects errors with repeated measurements, and fixes them on the fly. Once physical error rates are below a threshold, adding qubits makes logical errors exponentially rarer. Fault-tolerant machines need this; today's devices mostly rely on mitigation, which is why near-term quantum machine learning uses shallow circuits.</p>
+      ${C.keyIdea('Hardware turns the ideal circuit into a race against T1 and T2, fought with compilation (fewer, cheaper gates), mitigation (smarter statistics) and eventually correction (redundant encoding).')}
+      ${C.quizSection('Check yourself: Part VI')}`,
+    quiz: [
+      { q: 'Where does the maximally mixed state sit?', options: ['North pole', 'At the centre of the ball', 'On the equator', 'South pole'], answer: 1, why: 'ρ = I/2 has Bloch vector r = 0: a random bit along every axis.' },
+      { q: 'Which channel pulls every state toward |0⟩?', options: ['Bit flip', 'Phase flip', 'Depolarizing', 'Amplitude damping'], answer: 3, why: 'Amplitude damping models energy loss: |1⟩ decays to |0⟩, so z → (1 − γ)z + γ.' },
+      { q: 'Dephasing (the T2 process) destroys…', options: ['the population of |1⟩', 'the relative phase: the x and y components', 'only the z component', 'nothing measurable'], answer: 1, why: 'Dephasing shrinks the equatorial components while leaving P(0) and P(1) alone.' }
+    ],
     init(root, ctx) {
       /* T1/T2 */
       {
@@ -127,86 +162,7 @@
         }
         draw();
       }
+      C.quiz(root.querySelector('[data-quiz]'), this.quiz);
     }
-  });
-
-  /* ------------------------------------------------------------------ 6.1: mixtures versus superpositions */
-  C.widget('mix', body => {
-    let A = [0, 0], Bs = [PI, 0], w = 0.5;
-    const grid = h('div', { class: 'g-sphere' }), left = h('div'), right = h('div', { class: 'stack' }); grid.append(left, right); body.appendChild(grid);
-    const bv = new BlochView(left, { maxSize: 420, shadow: false, onDrag: (pt, i) => { const a = Q.anglesOf(pt); if (i === 0) A = [a.theta, a.phi]; else Bs = [a.theta, a.phi]; draw(); } });
-    const sW = slider({ label: 'weight of ψ₁', min: 0, max: 1, step: 0.01, value: w, fmt: v => pct(v, 0), oninput: v => { w = v; draw(); } });
-    const pres = h('div', { class: 'row tight' }, ...[
-      ['|0⟩ or |1⟩, 50:50', [0, 0], [PI, 0], 0.5], ['|+⟩ or |−⟩, 50:50', [PI / 2, 0], [PI / 2, PI], 0.5],
-      ['|0⟩ or |+⟩, 50:50', [0, 0], [PI / 2, 0], 0.5], ['always |+⟩', [PI / 2, 0], [PI / 2, PI], 1]
-    ].map(([l, a, b, ww]) => button(l, () => { A = a.slice(); Bs = b.slice(); w = ww; sW.set(w); draw(); }, 'btn')));
-    const rho = h('div', { class: 'eqn' }), read = h('div', { class: 'readout' });
-    right.append(h('p', { class: 'caption', text: 'Prepare ψ₁ with probability w and ψ₂ otherwise. Drag either arrow tip.' }), sW.el, pres, h('p', { class: 'panel-label', text: 'Density matrix' }), rho, read);
-    function draw() {
-      const T = Theme.tokens(), r1 = Q.blochOf(Q.stateFromBloch(A[0], A[1])), r2 = Q.blochOf(Q.stateFromBloch(Bs[0], Bs[1]));
-      const r = r1.map((v, i) => w * v + (1 - w) * r2[i]), L = Math.hypot(...r);
-      const chord = []; for (let k = 0; k <= 30; k++) { const t = k / 30; chord.push(r1.map((v, i) => (1 - t) * v + t * r2[i])); }
-      bv.set({ vectors: [{ v: r1, color: T.q, drag: true, label: 'ψ₁', width: 2.2 }, { v: r2, color: T.q2, drag: true, label: 'ψ₂', width: 2.2 }, { v: r, color: T.ink, main: true, label: 'ρ' }], trail: chord, trailColor: T.accent });
-      const [x, y, z] = r, e = (re, im) => cx(re, im, { d: 3 });
-      rho.innerHTML = `<span>ρ =</span> ${C.mat([[e((1 + z) / 2, 0), e(x / 2, -y / 2)], [e(x / 2, y / 2), e((1 - z) / 2, 0)]])}`;
-      read.innerHTML = `Bloch vector of the mixture: (${num(x, 3)}, ${num(y, 3)}, ${num(z, 3)}), length <b>${num(L, 3)}</b><br>purity Tr(ρ²) = (1 + |r|²)/2 = <b>${num((1 + L * L) / 2, 3)}</b>${L > 0.999 ? ' (a pure state)' : L < 1e-3 ? ' (maximally mixed: a random bit along every axis)' : ''}<br>P(0) = ${pct((1 + z) / 2)} · P(+) = ${pct((1 + x) / 2)} · P(+i) = ${pct((1 + y) / 2)}`;
-    }
-    draw();
-  });
-
-  /* ------------------------------------------------------------------ 6.2: the error budget of a circuit */
-  C.widget('budget', body => {
-    let le = -2.5, lN = 2.5;   // log10 of the error per two-qubit gate, log10 of the number of gates
-    const sE = slider({ label: 'error per gate', min: -4, max: -1, step: 0.01, value: le, fmt: v => pct(10 ** v, 10 ** v < 0.001 ? 3 : 2), oninput: v => { le = v; draw(); } });
-    const sN = slider({ label: 'two-qubit gates', min: 0, max: 5, step: 0.01, value: lN, fmt: v => Math.round(10 ** v).toLocaleString(), oninput: v => { lN = v; draw(); } });
-    const pres = h('div', { class: 'row tight' }, ...[['1% (early devices)', -2], ['0.3% (good devices)', Math.log10(0.003)], ['0.1% (best devices)', -3], ['0.01%', -4]].map(([l, v]) => button(l, () => { le = v; sE.set(v); draw(); }, 'btn')));
-    const plot = h('div'), read = h('div', { class: 'readout' });
-    body.append(h('div', { class: 'grid2' }, h('div', { class: 'stack' }, sE.el, sN.el, pres, read), plot));
-    function draw() {
-      const T = Theme.tokens(), eps = 10 ** le, N = Math.round(10 ** lN), F = Math.pow(1 - eps, N), lam = N * eps;
-      const curve = e => { const pts = []; for (let k = 0; k <= 100; k++) { const n = 10 ** (5 * k / 100); pts.push([n, Math.pow(1 - e, n)]); } return pts; };
-      linePlot(plot, { height: 230, x: [1, 1e5], y: [0, 1], xLog: true, yTicks: [0, 0.5, 1], xTitle: 'two-qubit gates in the circuit (log scale)', yTitle: 'chance of no error at all', xName: 'gates', xFmt: v => Math.round(v).toLocaleString(),
-        series: [{ name: '1% per gate', color: T.q2, points: curve(0.01), width: 1.4, opacity: 0.7 }, { name: '0.01% per gate', color: T.q3, points: curve(0.0001), width: 1.4, opacity: 0.7 }, { name: `${pct(eps, eps < 0.001 ? 3 : 2)} per gate`, color: T.q, points: curve(eps) }],
-        markers: [{ x: N, y: F, color: T.q }], hlines: [{ y: 0.5, color: T.lineStrong }] });
-      read.innerHTML = `expected number of errors N·ε = <b>${num(lam, 2)}</b><br>chance the whole run is error-free ≈ (1 − ε)<sup>N</sup> ≈ e<sup>−Nε</sup> = <b>${pct(F)}</b><br>largest circuit with at least a 50% chance: about ln 2 / ε ≈ <b>${Math.round(Math.log(2) / eps).toLocaleString()}</b> gates`;
-    }
-    draw();
-    G.V.onResize(plot, draw);
-  });
-
-  /* ------------------------------------------------------------------ 6.2: the repetition code */
-  C.widget('repetition', body => {
-    let p = 0.1, d = 3, trial = null;
-    const rng = Q.mulberry32(2024);
-    const binom = (n, k) => { let r = 1; for (let i = 1; i <= k; i++) r = r * (n - k + i) / i; return r; };
-    const pL = (pp, dd) => { let s = 0; for (let k = (dd + 1) / 2; k <= dd; k++) s += binom(dd, k) * pp ** k * (1 - pp) ** (dd - k); return s; };
-    const sP = slider({ label: 'flip chance p', min: 0, max: 0.5, step: 0.005, value: p, fmt: v => pct(v, 1), oninput: v => { p = v; trial = null; draw(); } });
-    const dSeg = seg({ label: 'copies', value: d, options: [1, 3, 5, 7].map(v => ({ value: v, label: v === 1 ? 'no code' : `${v} copies` })), onchange: v => { d = v; trial = null; draw(); } });
-    const demo = h('div', { class: 'readout' }), plot = h('div'), read = h('div', { class: 'readout' });
-    body.append(h('div', { class: 'grid2' }, h('div', { class: 'stack' }, h('div', { class: 'row' }, dSeg.el), sP.el,
-      h('div', { class: 'row' }, button('Send one bit', () => { one(); draw(); }, 'btn'), button('Send 10,000 bits', () => { many(); draw(); }, 'btn primary')), demo, read), plot));
-    function one() {
-      const flips = []; for (let i = 0; i < d; i++) flips.push(rng() < p ? 1 : 0);
-      const ones = flips.reduce((a, b) => a + b, 0);
-      trial = { kind: 'one', flips, ok: ones <= (d - 1) / 2 };
-    }
-    function many() {
-      let bad = 0; const M = 10000;
-      for (let t = 0; t < M; t++) { let ones = 0; for (let i = 0; i < d; i++) if (rng() < p) ones++; if (ones > (d - 1) / 2) bad++; }
-      trial = { kind: 'many', bad, M };
-    }
-    function draw() {
-      const T = Theme.tokens(), cols = { 1: T.muted, 3: T.q, 5: T.q2, 7: T.q3 }, series = [];
-      for (const dd of [1, 3, 5, 7]) { const pts = []; for (let k = 0; k <= 100; k++) { const x = 0.5 * k / 100; pts.push([x, pL(x, dd)]); } series.push({ name: dd === 1 ? 'no code' : `${dd} copies`, color: cols[dd], points: pts, width: dd === d ? 2.6 : 1.4, opacity: dd === d ? 1 : 0.55 }); }
-      linePlot(plot, { height: 240, x: [0, 0.5], y: [0, 0.5], yTicks: [0, 0.1, 0.2, 0.3, 0.4, 0.5], xTitle: 'chance p that each copy flips', yTitle: 'chance the decoded bit is wrong', xName: 'p', xFmt: v => pct(v, 0), yFmt: v => pct(v, 0), series, markers: [{ x: p, y: pL(p, d), color: cols[d] }] });
-      const L = pL(p, d);
-      read.innerHTML = d === 1 ? `Without a code, the bit is wrong with probability p = <b>${pct(p, 2)}</b>.` :
-        `Majority vote of ${d} copies fails when ${(d + 1) / 2} or more flip: <b>${pct(L, 3)}</b>, compared with ${pct(p, 2)} for a single copy.` + (p < 0.5 ? (L < p ? ' The code helps.' : '') : '');
-      if (!trial) demo.innerHTML = `Encode the bit 0 as ${'0'.repeat(d)}, let noise flip each copy with chance p, then decode by majority vote.`;
-      else if (trial.kind === 'one') demo.innerHTML = `sent ${'0'.repeat(d)} → received <b>${trial.flips.join('')}</b> → decoded <b>${trial.ok ? 0 : 1}</b> ${trial.ok ? '(correct)' : '(wrong!)'}`;
-      else demo.innerHTML = `${trial.M.toLocaleString()} bits sent: <b>${trial.bad.toLocaleString()}</b> decoded wrongly (${pct(trial.bad / trial.M, 2)}); the formula predicts ${pct(L, 2)}.`;
-    }
-    draw();
-    G.V.onResize(plot, draw);
   });
 })(window);

@@ -43,6 +43,31 @@
   /* ------------------------------------------------------------------ 7.1 */
   C.add({
     id: 'qml', part: 7, num: '7.1', title: 'What quantum machine learning is',
+    lede: 'Quantum machine learning uses parameterized quantum circuits as trainable models, or uses quantum computers to process data. Here is the map before we dive in.',
+    html: `
+      <p>"Quantum machine learning" covers four different combinations of data and processing:</p>
+      <div class="wide" style="overflow-x:auto;margin:6px 0 18px">
+        <table style="border-collapse:collapse;min-width:520px;width:100%;font-size:0.92rem">
+          <thead><tr><th style="text-align:left;padding:8px;border-bottom:1px solid var(--line-strong)"></th><th style="text-align:left;padding:8px;border-bottom:1px solid var(--line-strong)">Classical processing</th><th style="text-align:left;padding:8px;border-bottom:1px solid var(--line-strong)">Quantum processing</th></tr></thead>
+          <tbody>
+            <tr><th style="text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:top">Classical data</th><td style="padding:8px;border-bottom:1px solid var(--line);vertical-align:top"><b>CC</b> · ordinary ML, plus "quantum-inspired" classical algorithms</td><td style="padding:8px;border-bottom:1px solid var(--line);vertical-align:top;background:var(--accent-soft)"><b>CQ</b> · parameterized circuits and quantum kernels on classical datasets. <b>The rest of this part.</b></td></tr>
+            <tr><th style="text-align:left;padding:8px;vertical-align:top">Quantum data</th><td style="padding:8px;vertical-align:top"><b>QC</b> · classical ML on measurement records: calibrating devices, decoding error correction, learning from experiments</td><td style="padding:8px;vertical-align:top"><b>QQ</b> · quantum processing of states from quantum sensors or simulations</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The most studied near-term setting is <b>variational</b> (or hybrid) learning: a quantum circuit with adjustable angles plays the role of the model, and an ordinary computer trains it.</p>
+      ${C.bench('loop', 'The variational loop')}
+      <ol>
+        <li><b>Encode</b> the input x into a quantum state |φ(x)⟩ (chapter 7.2).</li>
+        <li><b>Transform</b> it with a trainable circuit U(θ), the ansatz.</li>
+        <li><b>Measure</b> an observable, usually a Pauli Z, many times. The average ⟨O⟩ is the model output f(x; θ) (chapter 7.3).</li>
+        <li><b>Score</b> the output against the label with a loss function, on a classical computer.</li>
+        <li><b>Update</b> θ with a classical optimizer. The gradients come from running the same circuit with shifted angles (chapter 7.4).</li>
+      </ol>
+      <h2>Where the field stands</h2>
+      <p>As of this writing there is no demonstrated practical advantage of quantum models on classical datasets. The open problems are well understood: <b>trainability</b> (gradients can vanish exponentially, chapter 7.7), the cost of <b>loading data</b> into states, noise, and <b>dequantization</b> results showing that some proposed quantum speed-ups can be matched by clever classical algorithms.
+      The more promising directions involve data that is quantum to begin with, problems with built-in structure or symmetry that a circuit can exploit, and carefully designed kernels. Treat QML as an active research field, not a toolbox with guaranteed gains. That makes it a good place to do research.</p>
+      ${C.keyIdea('A variational quantum model is a circuit with knobs. Classical data goes in through an encoding, a number comes out as an expectation value, and a classical optimizer turns the knobs.')}`,
     init(root) {
       const body = C.body(root, 'loop'), T = Theme.tokens();
       const W = 640, H = 250;
@@ -75,6 +100,23 @@
   /* ------------------------------------------------------------------ 7.2 */
   C.add({
     id: 'encoding', part: 7, num: '7.2', title: 'Encoding data',
+    lede: 'Before a circuit can process x, x has to become a quantum state. The choice of encoding decides, more than anything else, what a quantum model can learn.',
+    html: `
+      <p>An encoding, or <b>feature map</b>, is a circuit <span class="m">x → |φ(x)⟩</span>. The main options:</p>
+      <ul>
+        <li><b>Basis encoding.</b> Bits become a basis state: x = 101 → ${K('101')}. Simple, one qubit per bit, but it only handles discrete data.</li>
+        <li><b>Angle encoding.</b> Each feature sets a rotation angle, for example Ry(x₁) and Rz(x₂). The model then depends on x through sines and cosines.</li>
+        <li><b>Amplitude encoding.</b> A normalized vector of length 2ⁿ becomes the amplitudes of n qubits. Exponentially compact, but preparing an arbitrary state generally takes on the order of 2ⁿ gates, which can cancel the advantage.</li>
+        <li><b>Entangling feature maps.</b> Layers of H, Rz(xᵢ) and ZZ interactions with angles like (π − xᵢ)(π − xⱼ), as in Havlíček et al. (2019). They produce kernels believed to be hard to compute classically.</li>
+      </ul>
+      ${C.bench('enc-angle', 'Angle encoding puts data on the sphere', 'Hover a point to find it in both views')}
+      <p>The scale of the angles matters. Too small and all points crowd near one pole; too large and the map wraps around, sending distant inputs to nearby states. Choosing the scale is the quantum version of choosing a kernel bandwidth (chapter 7.6).</p>
+      ${C.bench('enc-amp', 'Amplitude encoding', 'Four numbers → two qubits')}
+      <h2>Re-uploading and the frequency spectrum</h2>
+      <p>If x enters through a gate like Rx(x), the model's output is a <b>Fourier series</b> in x. Each time the data is encoded, the available frequencies grow by one: L encodings give frequencies 0, 1, …, L (Schuld, Sweke and Meyer, 2021). This is why <b>data re-uploading</b>, encoding the same x several times between trainable layers, makes small circuits much more expressive.</p>
+      ${C.bench('enc-fourier', 'A random re-uploading model and its spectrum', 'The trainable gates are random; only the structure matters here')}
+      ${C.keyIdea('The encoding fixes the family of functions a quantum model can express. Angle encoding gives trigonometric features; re-uploading adds higher frequencies.')}
+      ${C.tryThis(['Set the scale to 2 and watch points from opposite corners of the square land on the same spot.', 'Raise L from 1 to 4. How many non-zero bars does the spectrum have?', 'In amplitude encoding, set all four sliders equal. Which state do you get?'])}`,
     init(root) {
       /* angle encoding */
       {
@@ -143,6 +185,18 @@
   /* ------------------------------------------------------------------ 7.3 */
   C.add({
     id: 'pqc', part: 7, num: '7.3', title: 'Circuits as models',
+    lede: 'A parameterized circuit followed by a measurement is a function f(x; θ). For one qubit you can see exactly what it computes: a plane slicing the Bloch sphere.',
+    html: `
+      <p>A <b>parameterized quantum circuit</b> <span class="m">U(x, θ)</span> together with an observable O defines a model</p>
+      <div class="formula">f(x; θ) = ⟨φ(x, θ)| O |φ(x, θ)⟩</div>
+      <p>With O = Z on one qubit, f lies between −1 and 1. For binary classification, predict class 0 when f &gt; 0 and class 1 when f &lt; 0, or turn f into a probability <span class="m">p(class 1) = (1 − f)/2</span>.</p>
+      <p><b>The single-qubit picture.</b> Encode x as a point r(x) on the sphere (previous chapter). Apply a trainable rotation, then measure Z. Rotating and then measuring Z is the same as measuring along a tilted axis n̂, so</p>
+      <div class="formula">f(x) = n̂ · r(x)</div>
+      <p>The decision boundary f = 0 is a <b>plane through the centre of the sphere</b>, and training tilts it. That is a linear classifier on the sphere, but because the encoding is nonlinear, the boundary in the original input space is curved.</p>
+      ${C.bench('pqc', 'A one-qubit classifier', 'Tilt the measurement axis by hand, or press Fit')}
+      <p>Real models use several qubits, layers of rotations and entangling gates (a <b>hardware-efficient ansatz</b>), and re-upload the data. More layers make the model more expressive, but also harder to train: the tension between <b>expressibility</b> and <b>trainability</b> runs through the rest of this part.</p>
+      ${C.keyIdea('One qubit, one encoding, one measurement: the classifier is a plane through the Bloch sphere. Everything bigger is a way of bending that plane.')}
+      ${C.tryThis(['Press Fit on the two clusters. Where does the measurement axis end up?', 'Switch to XOR and press Fit. Why can no plane separate the classes?', 'Look at the input-space panel: why is the boundary curved even though it is a plane on the sphere?'])}`,
     init(root) {
       const body = C.body(root, 'pqc');
       let kind = 'blobs', a = PI / 2, b = PI, busy = false;
@@ -194,6 +248,19 @@
   /* ------------------------------------------------------------------ 7.4 */
   C.add({
     id: 'gradients', part: 7, num: '7.4', title: 'Gradients: the parameter-shift rule',
+    lede: 'To train a circuit you need the slope of its output with respect to each angle. Quantum hardware can measure that slope exactly with two extra runs of the same circuit.',
+    html: `
+      <p>Take any gate of the form <span class="m">e<sup>−iθP/2</sup></span> where P is a Pauli (Rx, Ry, Rz are all like this). As a function of that one angle, the circuit's expectation value is a pure sinusoid:
+      <span class="m">f(θ) = A + B cos θ + C sin θ</span>. For a sinusoid, the slope at θ equals half the difference between the values a quarter-turn on either side:</p>
+      <div class="formula">∂f/∂θ = [ f(θ + π/2) − f(θ − π/2) ] / 2</div>
+      <p>This is the <b>parameter-shift rule</b> (Mitarai et al. 2018; Schuld et al. 2019). It is exact, not a finite-difference approximation, and it uses only the circuit you already have, run at two shifted angles.</p>
+      ${C.bench('ps', 'The landscape along one angle', 'Circuit: |0⟩ → Ry(0.9) → Rz(0.7) → Rx(θ) → measure Z')}
+      <h2>Why not finite differences?</h2>
+      <p>On hardware every f is estimated from a finite number of shots and carries noise of about <span class="m">1/√shots</span>. A finite difference divides that noise by a small step h, so it explodes. The parameter-shift rule uses a large shift and divides by 2.</p>
+      ${C.bench('ps-noise', 'Repeat both gradient estimates 300 times', 'Same shots for both estimators')}
+      <p>The cost: two circuit evaluations per parameter per gradient, each needing many shots. A model with P parameters needs about 2P circuits per gradient step, which is why simulators use backpropagation instead and why efficient gradient estimation is an active research topic.</p>
+      ${C.keyIdea('Every rotation angle traces a sinusoid, so its exact slope is half the difference of two shifted evaluations. That makes gradients measurable on real hardware, at the price of many circuit runs.')}
+      ${C.tryThis(['Move θ to a peak of the curve. What does the parameter-shift rule give there?', 'Switch to 100 shots and compare the spread of the two estimators.'])}`,
     init(root) {
       const f = th => { const s = new Q.State(1); s.gate('RY', 0, 0.9).gate('RZ', 0, 0.7).gate('RX', 0, th); return s.expZ(0); };
       const df = th => (f(th + 1e-6) - f(th - 1e-6)) / 2e-6;
@@ -248,53 +315,5 @@
         run();
       }
     }
-  });
-
-  /* ------------------------------------------------------------------ 7.1: classical machine learning in one panel */
-  C.widget('ml-basics', body => {
-    const S = { kind: 'blobs', feat: 'lin', lr: 0.5 };
-    let tr, te, w, b, H, epoch, last, running = false;
-    const frame = () => new Promise(r => requestAnimationFrame(() => r()));
-    const phi = x => S.feat === 'lin' ? [x[0], x[1]] : [x[0], x[1], x[0] * x[0], x[1] * x[1]];
-    const sig = z => 1 / (1 + Math.exp(-z));
-    const prob = x => { const f = phi(x); let z = b; for (let i = 0; i < f.length; i++) z += w[i] * f[i]; return sig(z); }; // p(red)
-    const dSeg = seg({ label: 'dataset', value: S.kind, options: [{ value: 'blobs', label: 'Two clusters' }, { value: 'circle', label: 'Circle' }], onchange: v => { S.kind = v; stop(); reset(); } });
-    const fSeg = seg({ label: 'features', value: S.feat, options: [{ value: 'lin', label: 'x₁, x₂' }, { value: 'quad', label: 'x₁, x₂, x₁², x₂²' }], onchange: v => { S.feat = v; stop(); reset(); } });
-    const sLr = slider({ label: 'learning rate', min: 0.05, max: 3, step: 0.05, value: S.lr, fmt: v => num(v, 2), oninput: v => { S.lr = v; } });
-    const runBtn = button('Train', () => running ? stop() : start(), 'btn primary');
-    body.append(h('div', { class: 'row' }, dSeg.el, fSeg.el), h('div', { class: 'row' }, h('div', { style: { flex: '1 1 260px', minWidth: 0 } }, sLr.el), runBtn,
-      button('One step', () => { stop(); step(); draw(); }, 'btn'), button('Reset', () => { stop(); reset(); }, 'btn')));
-    const grid = h('div', { class: 'grid2', style: { marginTop: '10px' } }), Lc = h('div', { class: 'stack' }), Rc = h('div', { class: 'stack' }); grid.append(Lc, Rc); body.appendChild(grid);
-    const plane = Plane(Lc, { max: 340, caption: 'Background: the model’s prediction. Blue predicts the blue class, red the red class. Filled dots train the model; hollow dots are held back to test it.' });
-    const formula = h('div', { class: 'calc' }), stats = h('div', { class: 'stats' }), pLoss = h('div');
-    Rc.append(formula, stats, pLoss);
-    function evalSet(D) {
-      let loss = 0, ok = 0;
-      D.X.forEach((x, i) => { const p = Math.min(1 - 1e-6, Math.max(1e-6, prob(x))), y = D.y[i]; loss += -(y * Math.log(p) + (1 - y) * Math.log(1 - p)); if ((p > 0.5 ? 1 : 0) === y) ok++; });
-      return { loss: loss / D.X.length, acc: ok / D.X.length };
-    }
-    function record() { const a = evalSet(tr), c = evalSet(te); H.lt.push([epoch, a.loss]); H.le.push([epoch, c.loss]); last = { a, c }; }
-    function reset() { tr = M.makeData(S.kind, 80, 101); te = M.makeData(S.kind, 80, 202); w = phi([0, 0]).map(() => 0); b = 0; epoch = 0; H = { lt: [], le: [] }; record(); draw(); }
-    function step() {
-      const g = w.map(() => 0); let gb = 0;
-      tr.X.forEach((x, i) => { const e = prob(x) - tr.y[i], f = phi(x); f.forEach((v, k) => { g[k] += e * v; }); gb += e; });
-      const n = tr.X.length; w = w.map((v, k) => v - S.lr * g[k] / n); b -= S.lr * gb / n; epoch++; record();
-    }
-    function start() { running = true; runBtn.textContent = 'Pause'; loop(); }
-    function stop() { running = false; runBtn.textContent = 'Train'; }
-    async function loop() {
-      while (running && body.isConnected && epoch < 400) { for (let k = 0; k < 4; k++) step(); draw(); await frame(); }
-      stop();
-    }
-    function draw() {
-      const T = Theme.tokens();
-      const pts = tr.X.map((x, i) => ({ x: x[0], y: x[1], color: classColor(tr.y[i], T) })).concat(te.X.map((x, i) => ({ x: x[0], y: x[1], color: classColor(te.y[i], T), hollow: true, r: 3.4 })));
-      plane.draw((x, y) => 1 - 2 * prob([x, y]), pts, 48);
-      const terms = (S.feat === 'lin' ? ['x₁', 'x₂'] : ['x₁', 'x₂', 'x₁²', 'x₂²']).map((t, k) => `${num(w[k], 2)}·${t}`).join(' + ').replace(/\+ −/g, '− ');
-      formula.innerHTML = `<div><span class="lbl">model</span>p(red) = σ(${terms} ${b < 0 ? '−' : '+'} ${num(Math.abs(b), 2)})</div><div class="note" style="font-family:var(--font-body)">σ(z) = 1/(1 + e<sup>−z</sup>) squashes any number into a probability between 0 and 1.</div>`;
-      stats.innerHTML = `<div class="stat"><span class="k">step</span><span class="v">${epoch}</span></div><div class="stat"><span class="k">train accuracy</span><span class="v">${pct(last.a.acc, 0)}</span></div><div class="stat"><span class="k">test accuracy</span><span class="v">${pct(last.c.acc, 0)}</span></div><div class="stat"><span class="k">train loss</span><span class="v">${num(last.a.loss, 3)}</span></div>`;
-      linePlot(pLoss, { height: 160, x: [0, Math.max(20, epoch)], y: [0, Math.max(0.8, ...H.lt.map(p => p[1]))], xTitle: 'gradient-descent steps', yTitle: 'cross-entropy loss', xName: 'step', series: [{ name: 'train', color: T.q, points: H.lt }, { name: 'test', color: T.q2, points: H.le }] });
-    }
-    reset();
   });
 })(window);

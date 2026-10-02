@@ -42,7 +42,7 @@
       this.G = { padL: 58, colW: 52, gap: 50, padT: 26, padR: 18 };
       this.circ = { n: 1, cols: [] }; this.p = 0; this.sel = null; this.cursor = { q: 0, c: 0 }; this.hover = null; this.outcomes = [];
       this.scroll = h('div', { class: 'circuit-scroll' }); host.appendChild(this.scroll);
-      this.svg = svg('svg', { class: 'circuit-svg', tabindex: this.o.static ? null : 0, role: this.o.static ? 'img' : 'group', 'aria-label': this.o.static ? (this.o.label || 'Circuit diagram') : this.o.editable ? 'Circuit editor. Arrow keys move the cursor, Enter places the selected palette gate or selects a gate, Delete removes it.' : 'Circuit diagram. Click a column to step to it.' });
+      this.svg = svg('svg', { class: 'circuit-svg', tabindex: 0, role: 'group', 'aria-label': this.o.editable ? 'Circuit editor. Arrow keys move the cursor, Enter places the selected palette gate or selects a gate, Delete removes it.' : 'Circuit diagram. Click a column to step to it.' });
       this.scroll.appendChild(this.svg);
       this._bind();
       Theme.onChange(() => this.render(), this.svg);
@@ -69,7 +69,7 @@
       // current column band
       if (cur >= 0 && cur < cols.length && this.o.showPlayhead !== false) svg('rect', { x: this.xOf(cur) - G.colW / 2 + 2, y: 4, width: G.colW - 4, height: H - 8, rx: 8, class: 'colband' }, s);
       // column numbers
-      if (this.o.colNums !== false) for (let c = 0; c < C; c++) {
+      for (let c = 0; c < C; c++) {
         const t = svg('text', { x: this.xOf(c), y: 14, class: 'colnum' }, s); t.textContent = c < cols.length ? String(c + 1) : '';
       }
       // wires + labels

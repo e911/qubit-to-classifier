@@ -2,7 +2,7 @@
 (function (G) {
   'use strict';
   const { h, num, angle, pct, slider, seg, button, animate, Theme, ketExpr, cx, reduceMotion } = G.U;
-  const { BlochView, bars, m2HTML, vecHTML, matHTML, linePlot } = G.V;
+  const { BlochView, bars, m2HTML, vecHTML, matHTML } = G.V;
   const Q = G.QSim, C = G.C, K = C.K, PI = Math.PI;
   const INFO = () => G.CircuitLab.INFO;
 
@@ -18,6 +18,27 @@
   /* ------------------------------------------------------------------ 2.1 */
   C.add({
     id: 'gates', part: 2, num: '2.1', title: 'Gates are rotations',
+    lede: 'A single-qubit gate is a 2×2 unitary matrix. On the Bloch sphere every one of them is a rotation.',
+    html: `
+      <p>A gate changes the amplitudes: the new pair (α′, β′) is a matrix times the old pair. For the result to be a valid state for every input, the matrix must be
+      <b>unitary</b>, <span class="m">U<sup>†</sup>U = I</span>. Unitary also means reversible: every gate can be undone by its inverse <span class="m">U<sup>†</sup></span>.</p>
+      <p>Geometrically, every single-qubit gate turns the whole Bloch sphere as a rigid body, about some axis by some angle. Pick a gate below and watch the axis (brass line) and the path.</p>
+      <ul>
+        <li><b>X, Y, Z</b>: half-turns about x, y and z. X swaps ${K('0')} and ${K('1')}, the quantum NOT. Z flips the sign of ${K('1')}, which moves ${K('+')} to ${K('−')}.</li>
+        <li><b>H</b> (Hadamard): a half-turn about the axis halfway between x and z. It swaps the poles with the equator: ${K('0')} ↔ ${K('+')}, ${K('1')} ↔ ${K('−')}.</li>
+        <li><b>S</b> and <b>T</b>: quarter- and eighth-turns about z. They change only the relative phase.</li>
+        <li><b>Rx(θ), Ry(θ), Rz(θ)</b>: turns by any angle about x, y, z. These are the trainable knobs of the quantum models in Part VII.</li>
+      </ul>
+      ${C.bench('g-bench', 'Gate bench', 'Tap a gate to apply it to the current state')}
+      <p><b>Order matters.</b> Rotations about different axes don't commute. From ${K('0')}, H then S lands on ${K('+i')}, while S then H lands on ${K('+')}.</p>
+      <p><b>Reading circuits.</b> Time runs left to right in a circuit, but in matrix notation the first gate is written on the right: the circuit ─H─S─ is the matrix <span class="m">S·H</span>. The bench multiplies them in that order for you.</p>
+      ${C.keyIdea('For one qubit, every gate is a rotation of the sphere. The matrix and the rotation are two descriptions of the same thing.')}
+      ${C.tryThis([
+        'From |0⟩ apply H, then Z, then H. Which single gate did you just build?',
+        'Start from |+⟩ and apply T eight times. Why are you back where you started?',
+        'From |0⟩, compare H with Ry(π/2). Same end point? Same matrix?',
+        'Apply S then H, then reset and apply H then S. Same result?'
+      ])}`,
     init(root) {
       const body = C.body(root, 'g-bench');
       const grid = h('div', { class: 'g-sphere' }); body.appendChild(grid);
@@ -89,6 +110,30 @@
   /* ------------------------------------------------------------------ 2.2 */
   C.add({
     id: 'measure', part: 2, num: '2.2', title: 'Measurement and bases',
+    lede: 'Measuring asks the qubit a yes-or-no question along one axis. You get one bit, the state collapses, and only many repetitions reveal the probabilities.',
+    html: `
+      <p>A standard measurement (the <b>Z basis</b>) asks: up or down? It returns 0 with probability <span class="m">P(0) = (1 + z)/2</span> and leaves the qubit at the pole it reported.</p>
+      <p>You can ask along any axis <span class="m">n̂</span> instead. The probability of the + answer is <span class="m">(1 + r·n̂)/2</span>: it depends only on the shadow of the arrow on that axis.
+      Hardware usually only measures Z, so to measure along another axis you rotate first: <b>H</b> then measure gives an X measurement; <b>S†</b>, <b>H</b>, then measure gives Y.</p>
+      ${C.bench('m-axis', 'Measure along any axis', 'The brass line is the measurement axis')}
+      <p>A state that is certain along one axis is random along the perpendicular axes: ${K('0')} always gives 0 in the Z basis but a fair coin in the X basis. No state is certain in both. This is the qubit's version of the uncertainty principle.</p>
+      <h2>Expectation values and tomography</h2>
+      <p>Record each outcome as +1 or −1 and average over many shots. That average is the <b>expectation value</b>: <span class="m">⟨Z⟩ = P(0) − P(1) = z</span>, and likewise <span class="m">⟨X⟩ = x</span> and <span class="m">⟨Y⟩ = y</span>.
+      Expectation values are exactly what the quantum models in Part VII output.</p>
+      <p>Measuring all three gives the whole Bloch vector. This is <b>state tomography</b>. With N shots per axis each coordinate carries an error of about <span class="m">1/√N</span>, so halving the error costs four times the shots.</p>
+      ${C.bench('m-tomo', 'Reconstruct a hidden state', 'Blue = true state (toggle) · orange = your estimate · dots = earlier estimates')}
+      ${C.keyIdea('A measurement returns a bit, not a state. Everything you know about a quantum state comes from statistics over many identical runs.')}
+      ${C.tryThis([
+        'Put the state at |+⟩ and run 1,000 shots along Z. Then switch the axis to X.',
+        'Measure once along X, then along Z, then along X again. Why can the second X answer differ from the first?',
+        'In the tomography panel, go from 100 to 10,000 shots per axis. How much smaller does the cloud of estimates get?'
+      ])}
+      ${C.quizSection('Check yourself: Part II')}`,
+    quiz: [
+      { q: 'What is H·Z·H?', options: ['X', 'Y', 'Z', 'The identity'], answer: 0, why: 'H swaps the x and z axes, so a half-turn about z becomes a half-turn about x.' },
+      { q: 'A qubit is in |+⟩. You measure in the Z basis. What do you get?', options: ['0 every time', '1 every time', '0 or 1, 50/50', '0 with 85% probability'], answer: 2, why: '|+⟩ is on the equator, so its shadow on the z axis is 0 and P(0) = (1 + 0)/2.' },
+      { q: 'Why does estimating ⟨Z⟩ need many shots?', options: ['Each shot returns only one bit', 'Gates are noisy', 'The state changes between shots on purpose', 'Measurement is deterministic'], answer: 0, why: 'Each run gives ±1. Only the average of many runs estimates the expectation value, with error shrinking like 1/√N.' }
+    ],
     init(root) {
       const rng = Q.mulberry32(42);
       /* --- measure along an axis --- */
@@ -163,89 +208,12 @@
           spread = cloud.length > 1 ? Math.sqrt(spread / (cloud.length - 1)) : NaN;
           read.innerHTML = `estimate (x, y, z) = (<b>${num(est[0], 3)}</b>, <b>${num(est[1], 3)}</b>, <b>${num(est[2], 3)}</b>)` +
             (showTrue ? `<br>true (x, y, z) = (${num(truth[0], 3)}, ${num(truth[1], 3)}, ${num(truth[2], 3)})<br>error = <b>${num(err, 3)}</b>` : '') +
-            `<br>arrow length ${num(len, 3)}${len > 1 ? '. That is longer than 1, which no real state allows: it is pure shot noise' : ''}` +
+            `<br>arrow length ${num(len, 3)}${len > 1 ? ' — longer than 1, which no real state allows: that is pure shot noise' : ''}` +
             `<br>typical error for ${N.toLocaleString()} shots ≈ √(2/N) = ${num(Math.sqrt(2 / N), 3)}` + (cloud.length > 1 ? ` · spread of your ${cloud.length} estimates: ${num(spread, 3)}` : '');
         }
         newState(); measure(); draw();
       }
+      C.quiz(root.querySelector('[data-quiz]'), this.quiz);
     }
-  });
-
-  /* ------------------------------------------------------------------ 2.1: a gate turns the whole sphere */
-  C.widget('gate-sphere', body => {
-    const R2 = Math.SQRT1_2;
-    const CARD = [['|0⟩', [1, 0, 0, 0]], ['|1⟩', [0, 0, 1, 0]], ['|+⟩', [R2, 0, R2, 0]], ['|−⟩', [R2, 0, -R2, 0]], ['|+i⟩', [R2, 0, 0, R2]], ['|−i⟩', [R2, 0, 0, -R2]]];
-    const col = T => [T.q, T.q, T.q2, T.q2, T.q3, T.q3];
-    const GATES = [['X'], ['Y'], ['Z'], ['H'], ['S'], ['SDG'], ['T'], ['SX'], ['RX', PI / 2], ['RY', PI / 2]];
-    let U = [1, 0, 0, 0, 0, 0, 1, 0], hist = [], busy = false, trails = [];
-    const grid = h('div', { class: 'g-sphere' }); body.appendChild(grid);
-    const left = h('div'), right = h('div', { class: 'stack' }); grid.append(left, right);
-    const bv = new BlochView(left, { maxSize: 420, shadow: false });
-    const lab = (g, p) => G.CircuitLab.LABEL[g] + (p !== undefined ? `(${angle(p)})` : '');
-    const btns = h('div', { class: 'row tight' }, ...GATES.map(([g, p]) => h('button', { type: 'button', class: 'gatebtn', html: lab(g, p), onclick: () => apply(g, p) })));
-    const seq = h('div', { class: 'readout' }), table = h('div');
-    right.append(h('p', { class: 'panel-label', text: 'Apply a gate to all six states at once' }), btns,
-      h('div', { class: 'row' }, button('Reset', () => { U = [1, 0, 0, 0, 0, 0, 1, 0]; hist = []; trails = []; bv.set({ axis: null }); draw(); }, 'btn')), seq, table);
-    const outs = () => CARD.map(([, v]) => Q.m2apply(U, v));
-    function nameOf(o) {
-      for (const [nm, c] of CARD) {
-        const re = c[0] * o[0] + c[1] * o[1] + c[2] * o[2] + c[3] * o[3], im = c[0] * o[1] - c[1] * o[0] + c[2] * o[3] - c[3] * o[2];
-        if (Math.abs(Math.hypot(re, im) - 1) < 1e-7) { const f = cx(re, im); return (f === '1' ? '' : f === '−1' ? '−' : f) + nm; }
-      }
-      return ketExpr([o[0], o[2]], [o[1], o[3]], 1);
-    }
-    function draw(pos) {
-      const T = Theme.tokens(), C6 = col(T), P = pos || outs().map(o => Q.blochOf(o));
-      bv.set({ points: P.map((b, i) => ({ v: b, color: C6[i], r: 5, label: CARD[i][0] })), trails: trails.map((t, i) => ({ pts: t, color: C6[i] })) });
-      const name = hist.length ? hist.map(e => lab(e[0], e[1])).reverse().join('') : 'I';
-      seq.innerHTML = hist.length ? `circuit: <b>─${hist.map(e => lab(e[0], e[1])).join('─')}─</b> · total matrix ${name}` : 'No gates yet: every state is where it started.';
-      const o = outs();
-      table.innerHTML = C.table(['Input', 'Output'], CARD.map(([nm], i) => [nm, `${hist.length ? name : ''}${nm} = ${nameOf(o[i])}`]), 'compact');
-    }
-    async function apply(g, p) {
-      if (busy) return; busy = true;
-      const r = Q.gateRotation(g, p), start = outs().map(o => Q.blochOf(o));
-      trails = start.map(b => [b]);
-      bv.set({ axis: r.n });
-      await animate(G.U.reduceMotion() ? 0 : 500 + 450 * Math.abs(r.theta) / PI, k => {
-        const now = start.map((b, i) => { const q = Q.rotateVec(b, r.n, r.theta * k); trails[i].push(q); return q; });
-        draw(now);
-      });
-      U = Q.m2mul(Q.gateMatrix(g, p), U); hist.push([g, p]);
-      draw(); busy = false;
-    }
-    draw();
-  });
-
-  /* ------------------------------------------------------------------ 2.2: shot noise */
-  C.widget('converge', body => {
-    let p0 = 0.75, runs = [], seed = 7;
-    const NS = []; for (let k = 0; k <= 60; k++) { const n = Math.round(10 ** (k / 15)); if (!NS.includes(n)) NS.push(n); }
-    const sP = slider({ label: 'true P(0)', min: 0, max: 1, step: 0.01, value: p0, fmt: v => pct(v, 0), oninput: v => { p0 = v; runs = []; draw(); } });
-    const plot = h('div'), read = h('div', { class: 'readout' });
-    body.append(h('div', { class: 'row' }, h('div', { style: { flex: '1 1 260px', minWidth: 0 } }, sP.el),
-      button('Run 10,000 shots', () => { run(); draw(); }, 'btn primary'), button('Run 5 more', () => { for (let i = 0; i < 5; i++) run(); draw(); }, 'btn'), button('Clear', () => { runs = []; draw(); }, 'btn')),
-      plot, read);
-    function run() {
-      const rng = Q.mulberry32(seed++); let c = 0, j = 0; const pts = [];
-      for (let n = 1; n <= 10000; n++) { if (rng() < p0) c++; if (n === NS[j]) { pts.push([n, c / n]); j++; } }
-      runs.push(pts); if (runs.length > 8) runs.shift();
-    }
-    function draw() {
-      const T = Theme.tokens(), se = n => Math.sqrt(p0 * (1 - p0) / n);
-      linePlot(plot, {
-        x: [1, 10000], y: [0, 1], xLog: true, height: 250, xTitle: 'number of shots N (log scale)', yTitle: 'estimate of P(0)', xName: 'N',
-        xFmt: v => Math.round(v).toLocaleString(), yTicks: [0, 0.25, 0.5, 0.75, 1],
-        bands: [{ points: NS.map(n => [n, Math.max(0, p0 - 2 * se(n)), Math.min(1, p0 + 2 * se(n))]), color: T.accent, alpha: 0.2 }],
-        hlines: [{ y: p0, color: T.ink2, label: 'true value' }],
-        series: runs.map((pts, i) => ({ points: pts, color: i === runs.length - 1 ? T.q : T.muted, width: i === runs.length - 1 ? 2 : 1.4, opacity: i === runs.length - 1 ? 1 : 0.55 }))
-      });
-      if (!runs.length) { read.innerHTML = 'Press "Run 10,000 shots". Each run measures the same state again and again, and the line shows the running estimate: the number of zeros so far divided by the number of shots so far. The shaded band is ±2 standard errors, ±2√(p(1 − p)/N).'; return; }
-      const last = runs[runs.length - 1], at = n => last.find(p => p[0] === n)[1];
-      read.innerHTML = [10, 100, 1000, 10000].map(n => `after ${n.toLocaleString()} shots: estimate ${num(at(n), 3)} (expected error ±${num(se(n), 3)})`).join('<br>') +
-        '<br>Each tenfold increase in N shrinks the error by only √10 ≈ 3.2.';
-    }
-    draw();
-    G.V.onResize(plot, draw);
   });
 })(window);

@@ -2,51 +2,24 @@
 (function (G) {
   'use strict';
   const { h, num, angle, pct, slider, seg, button, Theme, ketExpr, cx, phaseColor, rgba } = G.U;
-  const { linePlot, matrixHeat, unitaryHTML, svg } = G.V;
+  const { linePlot, matrixHeat, unitaryHTML, svg, BlochView } = G.V;
   const Q = G.QSim, C = G.C, K = C.K, PI = Math.PI;
 
   /* ------------------------------------------------------------------ 4.1 */
   C.add({
     id: 'lab', part: 4, num: '4.1', title: 'Circuit Lab',
-    lede: 'Build any circuit on up to five qubits and step through it gate by gate, watching the full state vector and every qubit\'s Bloch sphere.',
-    html: `
-      <ul>
-        <li><b>Place gates:</b> drag a gate from the palette onto a wire, or tap a gate and then tap a spot on the circuit.</li>
-        <li><b>Control any gate:</b> put ● (or ○ for "control on 0") in the same column. CNOT, CZ, SWAP and CCX drop in as ready-made groups.</li>
-        <li><b>Edit:</b> select a placed gate to change its angle or delete it, or drag it off the circuit to remove it. Keyboard: focus the circuit, move with the arrow keys, Enter places or selects, Delete removes.</li>
-        <li><b>Step:</b> press Play or use the arrows. Click the column numbers to jump. The shaded column is the one just applied.</li>
-        <li><b>Examples:</b> each one in the menu comes with step-by-step notes.</li>
-      </ul>
-      ${C.bench('lab', 'Circuit Lab', 'Load a worked example from the Examples menu')}
-      ${C.tryThis([
-        'Build a GHZ state on 4 qubits: (|0000⟩ + |1111⟩)/√2.',
-        'Make the Bell state (|01⟩ − |10⟩)/√2. Start from the Bell pair and add single-qubit gates.',
-        'Load "Phase kickback" and delete the H on q1, so the target is |1⟩ instead of |−⟩. Does the control still flip?',
-        'Load "Teleportation", step to the end and press "New outcomes" several times. Does q2 always match the ghost arrow?',
-        'Load "Toffoli from CNOT + T", add X gates on q0 and q1 at the start, and check the output.'
-      ])}`,
     init(root, ctx) {
       const body = C.body(root, 'lab');
       const lab = new G.CircuitLab.Lab(body, { mode: 'full' });
       if (C.pending.labCircuit) { lab.setCircuit(C.pending.labCircuit, C.pending.labCircuit.cols.length); C.pending.labCircuit = null; }
-      ctx.onLeave(() => lab.stop());
+      C.labInstance = lab; // the exercise panel below reads and loads circuits through this
+      ctx.onLeave(() => { lab.stop(); if (C.labInstance === lab) C.labInstance = null; });
     }
   });
 
   /* ------------------------------------------------------------------ 4.2 */
   C.add({
     id: 'interference', part: 4, num: '4.2', title: 'Interference',
-    lede: 'Quantum algorithms arrange for the paths to wrong answers to cancel and the paths to right answers to add up. Here is the smallest example.',
-    html: `
-      <p>Flip a fair coin twice and it is still random. Apply H twice to ${K('0')} and you get ${K('0')} back with certainty, because H·H = I. Trace the paths to see why.</p>
-      <p>The first H sends ${K('0')} to ${K('0')} and ${K('1')}, each with amplitude 1/√2. The second H sends each of those to both outputs. There are four paths, and each path's amplitude is the product of the amplitudes along it.
-      The two paths into ${K('1')} carry +½ and −½ and cancel. The two paths into ${K('0')} carry +½ and +½ and add up to 1.</p>
-      <p>Now put a phase gate P(φ) between the two H gates. Only the ${K('1')} branch picks up <span class="m">e<sup>iφ</sup></span>, and the outputs become</p>
-      <div class="formula">|0⟩: ½(1 + e<sup>iφ</sup>) &nbsp;&nbsp;&nbsp; |1⟩: ½(1 − e<sup>iφ</sup>) &nbsp;&nbsp;&nbsp; P(0) = cos²(φ/2)</div>
-      ${C.bench('i-paths', 'Every path, and how they add', 'Colour and arrow direction = phase of each path')}
-      <p>This circuit is a Mach–Zehnder interferometer. The phase φ steers all the probability from one output to the other without anything being measured in between. Every quantum algorithm in Part V is a larger, cleverer version of this choreography.</p>
-      ${C.keyIdea('Probabilities never cancel, but amplitudes can. Interference is the only way a quantum computer does better than guessing.')}
-      ${C.tryThis(['Set φ = π. Which output is now certain?', 'Find the values of φ that give a 50/50 split.', 'Why does φ have no effect if you measure between the two H gates? (Hint: measurement picks one path.)'])}`,
     init(root) {
       const body = C.body(root, 'i-paths');
       let phi = PI / 3;
@@ -124,26 +97,6 @@
   ];
   C.add({
     id: 'identities', part: 4, num: '4.3', title: 'Identities and universality',
-    lede: 'Different circuits can do exactly the same thing. A handful of identities lets you read, simplify and compile circuits.',
-    html: `
-      <p>Two circuits are equivalent when their unitaries are equal up to a global phase. The checker builds both matrices and compares them entry by entry.</p>
-      ${C.bench('ids', 'Identity checker', 'Colour = phase, opacity = magnitude')}
-      <h2>Universality</h2>
-      <p>A small, fixed set of gates can approximate any unitary as closely as you like.</p>
-      <ul>
-        <li>Any single-qubit gate is <span class="m">e<sup>iα</sup> Rz(β) Ry(γ) Rz(δ)</span>: three angles, like Euler angles for a rigid body.</li>
-        <li>H and T together generate a dense set of single-qubit rotations. Add CNOT and you can approximate every multi-qubit unitary.</li>
-        <li>The <b>Solovay–Kitaev theorem</b> says the approximation is efficient: reaching accuracy ε costs a number of gates that grows only polylogarithmically in 1/ε.</li>
-      </ul>
-      <p><b>Clifford circuits</b>, built only from H, S and CNOT, can be simulated efficiently on an ordinary computer (the <b>Gottesman–Knill theorem</b>), even when they create lots of entanglement.
-      The T gate is what takes a circuit beyond that. On fault-tolerant hardware Clifford gates are cheap and T gates are expensive, so the <b>T count</b> is a standard cost measure.</p>
-      ${C.keyIdea('Circuits are programs with many equivalent forms. Identities let you move between them; universality guarantees that H, T and CNOT are enough for everything.')}
-      ${C.quizSection('Check yourself: Part IV')}`,
-    quiz: [
-      { q: 'The circuit ─H─S─ (H first) corresponds to which matrix?', options: ['H·S', 'S·H', 'H + S', 'It depends on the input'], answer: 1, why: 'Later gates multiply from the left, so the first gate sits on the right.' },
-      { q: 'For H·P(φ)·H acting on |0⟩, what is P(0)?', options: ['cos²(φ/2)', 'sin²(φ/2)', 'Always 1/2', 'cos φ'], answer: 0, why: 'The amplitude of |0⟩ is (1 + e<sup>iφ</sup>)/2, whose squared magnitude is cos²(φ/2).' },
-      { q: 'Which gate set is universal?', options: ['{H, S, CNOT}', '{H, T, CNOT}', '{X, Z}', '{CNOT}'], answer: 1, why: '{H, S, CNOT} generates only Clifford circuits, which are classically simulable. Adding T makes the set universal.' }
-    ],
     init(root, ctx) {
       const body = C.body(root, 'ids');
       let cur = 0, rand = [0.9, -1.7, 2.3];
@@ -177,7 +130,127 @@
         view.appendChild(acts);
       }
       draw();
-      C.quiz(root.querySelector('[data-quiz]'), this.quiz);
     }
+  });
+
+  /* ------------------------------------------------------------------ 4.1: exercises for the Circuit Lab */
+  C.widget('lab-ex', (body, ctx, art) => {
+    const Bq = n => Q.builder(n);
+    const EX = [
+      { title: '|1⟩ and |+⟩', n: 2, text: 'Make the product state |1⟩ ⊗ |+⟩ = (|10⟩ + |11⟩)/√2.', target: () => Bq(2).g('X', 0).g('H', 1), hint: 'One gate on each wire is enough.' },
+      { title: 'Bell pair', n: 2, text: 'Make the Bell state (|00⟩ + |11⟩)/√2.', target: () => Bq(2).g('H', 0).cx(0, 1), hint: 'Put q0 in a superposition, then copy its value onto q1 with a CNOT.' },
+      { title: 'Singlet', n: 2, text: 'Make the singlet (|01⟩ − |10⟩)/√2, the one Bell state that changes sign when the qubits are swapped.', target: () => Bq(2).g('H', 0).cx(0, 1).g('X', 0).g('Z', 0), hint: 'Start from the Bell pair. A bit flip on one qubit turns |00⟩ + |11⟩ into |10⟩ + |01⟩; a phase flip on that same qubit then adds the minus sign.' },
+      { title: 'Sign pattern', n: 2, text: 'Make (|00⟩ + |01⟩ + |10⟩ − |11⟩)/2.', target: () => Bq(2).layer('H', [0, 1]).cz(0, 1), hint: 'First make all four outcomes equally likely, then flip the sign of |11⟩ alone with a two-qubit gate.' },
+      { title: 'GHZ', n: 3, text: 'Make the three-qubit GHZ state (|000⟩ + |111⟩)/√2.', target: () => Bq(3).g('H', 0).cx(0, 1).cx(1, 2), hint: 'The Bell-pair recipe plus one more CNOT.' },
+      { title: 'W state', n: 3, text: 'Challenge: make the W state (|001⟩ + |010⟩ + |100⟩)/√3.', target: () => Bq(3).g('RY', 0, 2 * Math.acos(Math.sqrt(2 / 3))).col([[0, { g: 'ACTRL' }], [1, { g: 'H' }]]).col([[0, { g: 'ACTRL' }], [1, { g: 'ACTRL' }], [2, { g: 'X' }]]), hint: 'Use Ry on q0 to split the probability 1/3 for q0 = 1 against 2/3 for q0 = 0 (the angle is 2 arccos √(2/3) ≈ 1.91). In the q0 = 0 branch, split again with an H on q1 that is anti-controlled (○) by q0. Finally flip q2 only when q0 and q1 are both 0.' },
+      { title: 'SWAP from CNOTs', n: 2, unitary: true, text: 'Build a circuit that swaps the two qubits for every possible input, using only CNOT gates.', target: () => Bq(2).cx(0, 1).cx(1, 0).cx(0, 1), hint: 'Three CNOTs, with the direction alternating: q0→q1, q1→q0, q0→q1.' }
+    ];
+    let cur = 0, showHint = false;
+    const list = h('div', { class: 'row tight' });
+    const btns = EX.map((e, i) => { const b = button(`${i + 1}. ${e.title}`, () => { cur = i; showHint = false; fb.innerHTML = ''; draw(); }, 'btn'); list.appendChild(b); return b; });
+    const task = h('div', { class: 'stack' }), fb = h('div', { class: 'stack', 'aria-live': 'polite' });
+    const actions = h('div', { class: 'row' },
+      button('Start with an empty circuit', () => { const lab = C.labInstance; if (!lab) return; const e = EX[cur]; lab.setCircuit({ n: e.n, cols: [] }, 0); scrollToLab(); }, 'btn'),
+      button('Check my circuit', () => check(), 'btn primary'),
+      button('Show a hint', () => { showHint = true; draw(); }, 'btn'),
+      button('Show a solution', () => { const lab = C.labInstance; if (!lab) return; const e = EX[cur], t = e.target(); lab.setCircuit({ n: e.n, cols: t.cols }, t.cols.length); fb.innerHTML = '<p class="note">A solution is now in the lab above. Step through it with the arrows, or press Play.</p>'; scrollToLab(); }, 'btn'));
+    body.append(list, task, actions, fb);
+    const scrollToLab = () => { const el = art.querySelector('[data-bench="lab"]'); if (el) el.scrollIntoView({ block: 'start', behavior: G.U.reduceMotion() ? 'auto' : 'smooth' }); };
+    const targetState = e => Q.runCircuit(e.target().build());
+    function draw() {
+      btns.forEach((b, i) => b.classList.toggle('primary', i === cur));
+      const e = EX[cur], ts = targetState(e);
+      task.innerHTML = `<p style="margin:0"><b>Exercise ${cur + 1}.</b> ${e.text}</p>` +
+        (e.unitary ? '' : `<div class="ket-line">target = ${ketExpr(ts.re, ts.im, e.n)}</div>`) +
+        `<p class="note" style="margin:0">Build it in the Circuit Lab above with ${e.n} qubits, all starting in |0⟩, then press "Check my circuit".</p>` +
+        (showHint ? `<p class="note" style="margin:0"><b>Hint.</b> ${e.hint}</p>` : '');
+    }
+    function check() {
+      const lab = C.labInstance, e = EX[cur];
+      if (!lab) { fb.innerHTML = '<p class="note">The Circuit Lab is not loaded.</p>'; return; }
+      const circ = lab.circ;
+      if (circ.n !== e.n) { fb.innerHTML = `<p><span class="pill bad">Not yet</span> <span class="note">This exercise needs ${e.n} qubits and the lab has ${circ.n}. Use "+ qubit" or "− qubit".</span></p>`; return; }
+      if (Q.hasMeasurement(circ)) { fb.innerHTML = '<p><span class="pill bad">Not yet</span> <span class="note">Remove the measurements: a measurement makes the result random, so the circuit no longer prepares one definite state.</span></p>'; return; }
+      if (e.unitary) {
+        const t = e.target(), eq = Q.equalUpToPhase(Q.unitary(circ), Q.unitary({ n: e.n, cols: t.cols }));
+        fb.innerHTML = eq.equal ? '<p><span class="pill good">Correct</span> <span class="note">Your circuit has exactly the SWAP matrix, up to a global phase. Look at the Unitary tab in the lab to see it.</span></p>'
+          : '<p><span class="pill bad">Not yet</span> <span class="note">Your circuit does not swap every input. Open the Unitary tab in the lab: a SWAP sends |01⟩ to |10⟩ and |10⟩ to |01⟩, and leaves |00⟩ and |11⟩ alone.</span></p>';
+        return;
+      }
+      const ts = targetState(e), ys = Q.runCircuit(circ);
+      let re = 0, im = 0; for (let i = 0; i < ts.N; i++) { re += ts.re[i] * ys.re[i] + ts.im[i] * ys.im[i]; im += ts.re[i] * ys.im[i] - ts.im[i] * ys.re[i]; }
+      const F = re * re + im * im;
+      fb.innerHTML = F > 0.999 ? `<p><span class="pill good">Correct</span> <span class="note">Your circuit prepares the target state.${Math.abs(im) > 1e-6 || re < 0 ? ' It differs only by a global phase, which no measurement can see.' : ''}</span></p>`
+        : `<p><span class="pill bad">Not yet</span> <span class="note">Your state is ${ketExpr(ys.re, ys.im, e.n)}. Its overlap with the target is |⟨target|yours⟩|² = ${num(F, 3)}, and a perfect answer gives 1.</span></p>`;
+    }
+    draw();
+  });
+
+  /* ------------------------------------------------------------------ 4.2: which-path information */
+  C.widget('which-path', body => {
+    let chi = PI / 2, phi = 0;
+    const sC = slider({ label: 'marker learns χ', min: 0, max: PI, step: 0.01, value: chi, snapPi: true, fmt: angle, oninput: v => { chi = v; draw(); } });
+    const sP = slider({ label: 'phase φ', min: 0, max: 2 * PI, step: 0.01, value: phi, snapPi: true, fmt: angle, oninput: v => { phi = v; draw(); } });
+    const circHost = h('div'), plot = h('div'), read = h('div', { class: 'calc' });
+    body.append(circHost, h('div', { class: 'grid2' }, h('div', { class: 'stack' }, sC.el, sP.el, read), plot));
+    function p0Sim() {
+      const c = Q.builder(2).g('H', 0).col([[0, { g: 'P', p: phi, t: 'φ' }]]).col([[0, { g: 'CTRL' }], [1, { g: 'RY', p: chi, t: 'χ' }]]).g('H', 0).build();
+      const s = Q.runCircuit(c); let p = 0; for (let i = 0; i < 4; i++) if (!(i & 2)) p += s.re[i] ** 2 + s.im[i] ** 2; return { p, c };
+    }
+    function draw() {
+      const T = Theme.tokens(), V = Math.cos(chi / 2), { p, c } = p0Sim();
+      circHost.innerHTML = '';
+      new G.CircuitLab.CircuitView(circHost, { static: true, showPlayhead: false, colNums: false, inputs: ['|0⟩', '|0⟩'] }).set({ n: 2, cols: c.cols });
+      const curve = v => { const pts = []; for (let i = 0; i <= 120; i++) { const x = 2 * PI * i / 120; pts.push([x, (1 + v * Math.cos(x)) / 2]); } return pts; };
+      linePlot(plot, { height: 220, x: [0, 2 * PI], y: [0, 1], xTicks: [0, PI / 2, PI, 3 * PI / 2, 2 * PI], xFmt: v => angle(v), yTicks: [0, 0.5, 1], xTitle: 'phase φ', yTitle: 'P(path qubit reads 0)', xName: 'φ',
+        series: [{ name: 'no marker (χ = 0)', color: T.muted, points: curve(1), width: 1.4, opacity: 0.7 }, { name: `marker with χ = ${angle(chi)}`, color: T.q, points: curve(V) }],
+        markers: [{ x: phi, y: p, color: T.q }] });
+      read.innerHTML = `<div><span class="lbl">overlap of the marker states</span>⟨m₀|m₁⟩ = cos(χ/2) = <b>${num(V, 3)}</b></div>` +
+        `<div><span class="lbl">P(0)</span>(1 + ${num(V, 3)} × cos φ)/2 = <b>${num(p, 3)}</b></div>` +
+        `<div class="note" style="font-family:var(--font-body)">${V > 0.999 ? 'The marker learns nothing, and the fringes swing fully from 0 to 1.' : V < 0.001 ? 'The marker knows the path for certain. The interference is gone: P(0) = 1/2 whatever φ is.' : `The marker partly knows the path, and the fringes shrink to ${pct(V, 0)} of their full height.`}</div>`;
+    }
+    draw();
+    G.V.onResize(plot, draw);
+  });
+
+  /* ------------------------------------------------------------------ 4.3: what H and T can reach */
+  C.widget('ht-orbit', body => {
+    let set = 'HT', L = 10, target = [1.1, 2.3], res = null;
+    const sSeg = seg({ label: 'gate set', value: set, options: [{ value: 'HS', label: 'H and S (Clifford)' }, { value: 'HT', label: 'H and T' }], onchange: v => { set = v; run(); } });
+    const sL = slider({ label: 'longest sequence', min: 1, max: 26, step: 1, value: L, fmt: v => `${v} gates`, oninput: v => { L = v; run(); } });
+    const grid = h('div', { class: 'g-sphere' }), left = h('div'), right = h('div', { class: 'stack' }); grid.append(left, right);
+    const bv = new BlochView(left, { maxSize: 420, shadow: false });
+    const read = h('div', { class: 'readout' });
+    right.append(sSeg.el, sL.el, h('div', { class: 'row' }, button('New target', () => { target = [Math.acos(2 * Math.random() - 1), 2 * PI * Math.random()]; run(); }, 'btn')), read,
+      h('p', { class: 'caption', text: 'Each dot is a state you can reach from |0⟩ with a sequence of the chosen gates. The orange arrow is a target state; the readout gives the closest dot.' }));
+    body.appendChild(grid);
+    function explore() {
+      const gates = set === 'HT' ? ['H', 'T'] : ['H', 'S'], mats = gates.map(g => Q.gateMatrix(g)), MAX = 5000;
+      const key = b => b.map(x => Math.round(x * 1e5)).join(',');
+      const seen = new Map(); seen.set(key([0, 0, 1]), { b: [0, 0, 1], w: [] });
+      let frontier = [{ v: [1, 0, 0, 0], w: [] }];
+      for (let l = 1; l <= L && frontier.length && seen.size < MAX; l++) {
+        const next = [];
+        for (const f of frontier) {
+          for (let k = 0; k < gates.length; k++) {
+            const v = Q.m2apply(mats[k], f.v), b = Q.blochOf(v), kk = key(b);
+            if (seen.has(kk)) continue;
+            const w = f.w.concat(gates[k]); seen.set(kk, { b, w }); next.push({ v, w });
+          }
+          if (seen.size >= MAX) break;
+        }
+        frontier = next;
+      }
+      return [...seen.values()];
+    }
+    function run() {
+      const T = Theme.tokens(), pts = explore(), tb = Q.blochOf(Q.stateFromBloch(target[0], target[1]));
+      let best = pts[0], bd = -2; for (const p of pts) { const d = p.b[0] * tb[0] + p.b[1] * tb[1] + p.b[2] * tb[2]; if (d > bd) { bd = d; best = p; } }
+      bv.set({ points: pts.map(p => ({ v: p.b, color: p === best ? T.q2 : T.q, r: p === best ? 5 : (pts.length > 1500 ? 1.6 : 2.6) })), vectors: [{ v: tb, color: T.q2, main: true }] });
+      const F = (1 + bd) / 2, word = best.w.length ? best.w.map(g => G.CircuitLab.LABEL[g]).join(' ') : '(no gates)';
+      read.innerHTML = `distinct states reached: <b>${pts.length.toLocaleString()}</b>${pts.length >= 5000 ? ' (stopped at 5,000)' : ''}<br>closest to the target: fidelity <b>${num(F, 4)}</b><br>gates, in order: ${word.length > 90 ? word.slice(0, 90) + ' …' : word}` +
+        (set === 'HS' ? '<br>H and S only ever reach the six landmark states, however long the sequence.' : '');
+    }
+    run();
   });
 })(window);

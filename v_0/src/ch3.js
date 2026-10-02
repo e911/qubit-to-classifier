@@ -27,6 +27,24 @@
   /* ------------------------------------------------------------------ 3.1 */
   C.add({
     id: 'tensor', part: 3, num: '3.1', title: 'Two qubits and the tensor product',
+    lede: 'Two qubits need four amplitudes; n qubits need 2ⁿ. That exponential bookkeeping is both the source of quantum computing\'s power and the reason it is hard to simulate.',
+    html: `
+      <p>Two qubits have four basis states, ${K('00')}, ${K('01')}, ${K('10')} and ${K('11')}. A general two-qubit state is
+      <span class="m">α₀₀|00⟩ + α₀₁|01⟩ + α₁₀|10⟩ + α₁₁|11⟩</span>, with the squared magnitudes adding up to 1.</p>
+      <p>If the two qubits are prepared independently, the joint state is their <b>tensor product</b>:</p>
+      <div class="formula">(a₀|0⟩ + a₁|1⟩) ⊗ (b₀|0⟩ + b₁|1⟩) = a₀b₀|00⟩ + a₀b₁|01⟩ + a₁b₀|10⟩ + a₁b₁|11⟩</div>
+      <p>Every amplitude is a product of one number from each qubit, so the 2×2 grid of amplitudes below is an outer product.</p>
+      <p><b>Labels in this course:</b> the first character is q0, the top wire, so ${K('q0 q1')}. Qiskit prints bit strings the other way round, with q0 on the right. Check the convention whenever you compare tools.</p>
+      ${C.bench('t-grid', 'Two independent qubits', 'Each cell = row amplitude × column amplitude')}
+      <h2>Why simulation gets hard</h2>
+      <p>Every extra qubit doubles the number of amplitudes. A classical computer storing each as a complex number with 16 bytes needs <span class="m">16 × 2ⁿ</span> bytes.</p>
+      ${C.bench('t-mem', 'Memory for a full state vector')}
+      ${C.keyIdea('Independent qubits multiply their amplitudes. Most states of n qubits are not such products: those are the entangled ones, and they are what make 2ⁿ amplitudes necessary.')}
+      ${C.tryThis([
+        'Set q0 to |+⟩ and q1 to |1⟩. Which cells are filled?',
+        'Give q1 a relative phase of π and watch which cells change colour.',
+        'How many qubits can you add before the state vector no longer fits in 1 TB?'
+      ])}`,
     init(root) {
       {
         const body = C.body(root, 't-grid');
@@ -99,6 +117,28 @@
   };
   C.add({
     id: 'multigates', part: 3, num: '3.2', title: 'Multi-qubit gates',
+    lede: 'Controlled gates act on one qubit depending on another. On superpositions they act on every branch at once, which is how qubits become entangled.',
+    html: `
+      <ul>
+        <li><b>CNOT</b> (controlled-X) flips the target when the control is 1: <span class="m">|a, b⟩ → |a, a ⊕ b⟩</span>. On basis states it is a reversible XOR.</li>
+        <li><b>CZ</b> multiplies ${K('11')} by −1 and does nothing else. It is symmetric, so there is no real difference between control and target.</li>
+        <li><b>SWAP</b> exchanges two qubits.</li>
+        <li><b>Toffoli</b> (CCX) flips the target when both controls are 1. With it you can build any classical logic circuit reversibly.</li>
+        <li><b>Controlled-U</b> applies U to the target only in the branch where the control is ${K('1')}. In the Circuit Lab you can put a control dot on any gate.</li>
+      </ul>
+      <p>The 4×4 matrix of a two-qubit gate lists where each input goes: column ${K('ab')} is the output for input ${K('ab')}.</p>
+      ${C.bench('mg', 'Controlled-gate bench', 'Pick a gate and an input for each qubit')}
+      <h2>Phase kickback</h2>
+      <p>Give CNOT the control ${K('+')} and the target ${K('−')}. The target is an eigenstate of X with eigenvalue −1, so flipping it only multiplies that branch by −1:</p>
+      <div class="formula">|+⟩|−⟩ = ½(|0⟩ + |1⟩)|−⟩ → ½(|0⟩ − |1⟩)|−⟩ = |−⟩|−⟩</div>
+      <p>The "target" did not change, but the control flipped from ${K('+')} to ${K('−')}. The phase was kicked back onto the control. Deutsch–Jozsa, Bernstein–Vazirani, phase estimation and Shor's algorithm all run on this effect.</p>
+      ${C.keyIdea('A controlled gate is an "if" that never looks: it acts on every branch of the superposition, and the control qubit can change even when the target does not.')}
+      ${C.tryThis([
+        'CNOT with q0 = |+⟩ and q1 = |0⟩. Is the output a product state?',
+        'CNOT with q0 = |+⟩ and q1 = |−⟩. Which qubit changed?',
+        'CZ with |+⟩|+⟩. Compare the output with CNOT on |+⟩|0⟩.',
+        'Toffoli with q0 = |1⟩, q1 = |+⟩, q2 = |0⟩. What does it reduce to?'
+      ])}`,
     init(root) {
       const body = C.body(root, 'mg');
       let gate = 'CNOT'; const inp = ['+', '0', '0'];
@@ -153,6 +193,36 @@
   /* ------------------------------------------------------------------ 3.3 */
   C.add({
     id: 'entangle', part: 3, num: '3.3', title: 'Entanglement',
+    lede: 'Entangled qubits share one state that cannot be split into a state per qubit. Each qubit alone looks random; together they are perfectly correlated.',
+    html: `
+      <p>A two-qubit state is a <b>product state</b> if it can be written as ${K('a')} ⊗ ${K('b')}. Otherwise it is <b>entangled</b>. For two qubits there is a one-line test:
+      the state is a product exactly when <span class="m">α₀₀α₁₁ − α₀₁α₁₀ = 0</span>, that is, when the 2×2 amplitude grid is an outer product.</p>
+      <p>The workhorse is the Bell state made by H and CNOT: <span class="m">(|00⟩ + |11⟩)/√2</span>. It fails the test (½ − 0 ≠ 0).</p>
+      <p><b>No state of its own.</b> If you only hold one qubit of an entangled pair, the best description of it is a mixed state, and its Bloch arrow is shorter than 1. For a maximally entangled pair the arrow has length 0: a perfectly random coin along every axis.
+      The amount of entanglement of a pure two-qubit state can be measured by the <b>entanglement entropy</b> <span class="m">S = −λ log₂λ − (1−λ) log₂(1−λ)</span>, with <span class="m">λ = (1 + |r|)/2</span> from the single-qubit arrow length |r|. It is 0 bits for a product state and 1 bit for a Bell state.</p>
+      ${C.bench('e-dial', 'The entangler: Ry(θ) then CNOT', 'Turn θ from 0 to π/2 and watch both arrows shrink')}
+      <h2>The four Bell states</h2>
+      <p>Adding an X and/or a Z to one qubit of the Bell pair gives the other three maximally entangled states. Together they form the <b>Bell basis</b>, used by teleportation and superdense coding (chapter 5.1).</p>
+      ${C.bench('e-bell', 'Bell basis')}
+      <h2>Stronger than classical correlations</h2>
+      <p>Measure both qubits of <span class="m">(|00⟩ + |11⟩)/√2</span> along Z and you always get equal bits. Measure both along X and they are again always equal. Could the pair simply carry pre-agreed answers, like two sealed envelopes? The <b>CHSH test</b> says no.
+      Alice measures along angle a or a′, Bob along b or b′ (all in the x–z plane), and they compute
+      <span class="m">S = E(a,b) − E(a,b′) + E(a′,b) + E(a′,b′)</span>, where E is the average product of their ±1 outcomes. Any pre-agreed strategy gives |S| ≤ 2. The Bell state reaches <span class="m">2√2 ≈ 2.83</span>.</p>
+      ${C.bench('e-chsh', 'The CHSH game', 'For this state E(α, β) = cos(α − β)')}
+      <p><b>No signalling.</b> Whatever Alice measures, Bob's qubit on its own stays a fair coin. Entanglement creates correlations but cannot send a message; it needs a classical channel to be useful, as teleportation shows.</p>
+      ${C.keyIdea('Entangled qubits have no individual states: their arrows shrink inside the sphere. The information lives in the correlations, which can beat any classical strategy.')}
+      ${C.tryThis([
+        'Set θ = π/2. Measure 1,000 shots in ZZ, then in XX. What never happens?',
+        'Find θ for which the entropy is 0.5 bits.',
+        'In the CHSH game, set a = b and a′ = b′. What is S now?',
+        'Raise the noise until S drops below 2. How much noise does it take?'
+      ])}
+      ${C.quizSection('Check yourself: Part III')}`,
+    quiz: [
+      { q: 'How many amplitudes describe a general state of 10 qubits?', options: ['10', '20', '100', '1,024'], answer: 3, why: '2¹⁰ = 1,024 complex amplitudes.' },
+      { q: 'Which state is entangled?', options: ['(|00⟩ + |01⟩)/√2', '(|00⟩ + |11⟩)/√2', '|+⟩ ⊗ |−⟩', '(|00⟩ + |01⟩ + |10⟩ + |11⟩)/2'], answer: 1, why: 'For (|00⟩ + |11⟩)/√2, α₀₀α₁₁ − α₀₁α₁₀ = 1/2 ≠ 0. The others factor into single-qubit states.' },
+      { q: 'CNOT acts with control |+⟩ and target |−⟩. What changes?', options: ['Only the target', 'Only the control, which becomes |−⟩', 'Both', 'Nothing'], answer: 1, why: 'Phase kickback: |−⟩ is an eigenstate of X with eigenvalue −1, so the control\'s |1⟩ branch picks up a minus sign.' }
+    ],
     init(root) {
       const rng = Q.mulberry32(7);
       /* entangler */
@@ -251,133 +321,7 @@
         }
         draw();
       }
+      C.quiz(root.querySelector('[data-quiz]'), this.quiz);
     }
-  });
-
-  /* ------------------------------------------------------------------ 3.1: a gate on one qubit acts on pairs */
-  C.widget('pairs', body => {
-    const n = 3, N = 8, R2 = Math.SQRT1_2;
-    const GATES1 = [['H'], ['X'], ['Z'], ['S'], ['RY', PI / 3]];
-    const general = () => Q.State.product([[R2, 0, R2, 0], [Math.cos(PI / 6), 0, Math.sin(PI / 6), 0], [Math.cos(PI / 6), 0, 0, Math.sin(PI / 6)]]);
-    let tq = 0, gi = 0, sel = 0, st = general(), prev = null;
-    const label = (g, p) => G.CircuitLab.LABEL[g] + (p !== undefined ? `(${angle(p)})` : '');
-    const qSeg = seg({ label: 'target qubit', value: tq, options: [0, 1, 2].map(q => ({ value: q, label: 'q' + q })), onchange: v => { tq = v; prev = null; sel = 0; draw(); } });
-    const gSeg = seg({ label: 'gate', value: gi, options: GATES1.map(([g, p], i) => ({ value: i, label: label(g, p) })), onchange: v => { gi = v; prev = null; draw(); } });
-    const startRow = h('div', { class: 'row tight' },
-      button('Start from |000⟩', () => { st = new Q.State(3); prev = null; draw(); }, 'btn'),
-      button('Start from a general state', () => { st = general(); prev = null; draw(); }, 'btn'));
-    const table = h('div', { class: 'table-wrap' }), calc = h('div', { class: 'calc' }), note = h('p', { class: 'note' });
-    body.append(h('div', { class: 'row' }, h('span', { class: 'panel-label', style: { margin: 0 }, text: 'Gate' }), gSeg.el, h('span', { class: 'panel-label', style: { margin: '0 0 0 8px' }, text: 'on' }), qSeg.el),
-      h('div', { class: 'row' }, button('Apply the gate', () => apply(), 'btn primary'), startRow), note, table, calc);
-    const pairOf = i => { const b = 1 << (n - 1 - tq); return [i & ~b, i | b]; };
-    function apply() {
-      prev = st.clone(); const [g, p] = GATES1[gi]; st.gate(g, tq, p); draw();
-    }
-    function draw() {
-      const T = Theme.tokens(), bit = 1 << (n - 1 - tq), cols = [T.q, T.q2, T.q3, T.accent];
-      const pairIdx = []; let k = 0; for (let i = 0; i < N; i++) if (!(i & bit)) pairIdx[i] = pairIdx[i | bit] = k++;
-      const lab = i => { const s = bits(i, n); return '|' + s.split('').map((c, q) => q === tq ? `<b style="color:${T.accent}">${c}</b>` : c).join('') + '⟩'; };
-      const cell = (S, i) => S ? `<span style="display:inline-flex;align-items:center;gap:6px">${circSVG(S.re[i], S.im[i], 30)}<span>${cx(S.re[i], S.im[i], { d: 3 })}</span></span>` : '<span class="note">·</span>';
-      let html = `<table class="dtable compact"><thead><tr><th>Basis state</th><th>Pair</th><th>${prev ? 'Before' : 'Amplitude'}</th>${prev ? '<th>After</th>' : ''}</tr></thead><tbody>`;
-      for (let i = 0; i < N; i++) {
-        const pk = pairIdx[i], mark = `<span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${cols[pk]};vertical-align:-1px"></span> ${pk + 1}`;
-        const isSel = pairOf(i)[0] === pairOf(sel)[0];
-        html += `<tr data-i="${i}" style="cursor:pointer${isSel ? `;background:${G.U.rgba(T.accent, 0.12)}` : ''}"><th scope="row" class="m">${lab(i)}</th><td>${mark}</td><td>${cell(prev || st, i)}</td>${prev ? `<td>${cell(st, i)}</td>` : ''}</tr>`;
-      }
-      table.innerHTML = html + '</tbody></table>';
-      table.querySelectorAll('tr[data-i]').forEach(tr => tr.addEventListener('click', () => { sel = +tr.dataset.i; draw(); }));
-      const [i0, i1] = pairOf(sel), [g, p] = GATES1[gi], m = Q.gateMatrix(g, p), S0 = prev || st;
-      const a = [S0.re[i0], S0.im[i0]], b = [S0.re[i1], S0.im[i1]], E = (r, im) => cx(r, im, { d: 3 });
-      const w = z => { const t = E(z[0], z[1]); return /[+−-]/.test(t) ? `(${t})` : t; };
-      const o0 = [m[0] * a[0] - m[1] * a[1] + m[2] * b[0] - m[3] * b[1], m[0] * a[1] + m[1] * a[0] + m[2] * b[1] + m[3] * b[0]];
-      const o1 = [m[4] * a[0] - m[5] * a[1] + m[6] * b[0] - m[7] * b[1], m[4] * a[1] + m[5] * a[0] + m[6] * b[1] + m[7] * b[0]];
-      note.innerHTML = `${label(g, p)} on q${tq} pairs up basis states that differ only in bit q${tq} (in brass). Each colour is one pair, and the gate's 2 × 2 matrix acts on each pair separately. Click a row to see its pair worked out.`;
-      calc.innerHTML = `<div><span class="lbl">pair ${pairIdx[i0] + 1}</span>${lab(i0)} and ${lab(i1)}</div>` +
-        `<div><span class="lbl">new ${lab(i0)}</span>${w([m[0], m[1]])} × ${w(a)} + ${w([m[2], m[3]])} × ${w(b)} = <b>${E(o0[0], o0[1])}</b></div>` +
-        `<div><span class="lbl">new ${lab(i1)}</span>${w([m[4], m[5]])} × ${w(a)} + ${w([m[6], m[7]])} × ${w(b)} = <b>${E(o1[0], o1[1])}</b></div>` +
-        (prev ? '' : '<div class="note" style="font-family:var(--font-body)">Press "Apply the gate" to update all four pairs at once.</div>');
-    }
-    draw();
-  });
-
-  /* ------------------------------------------------------------------ 3.2: inside a controlled gate */
-  C.widget('anatomy', body => {
-    const US = [['X'], ['Z'], ['H'], ['S'], ['T'], ['RY', PI / 2]];
-    let ui = 0, ctl = 0;
-    const label = (g, p) => G.CircuitLab.LABEL[g] + (p !== undefined ? `(${angle(p)})` : '');
-    const uSeg = seg({ label: 'gate U', value: ui, options: US.map(([g, p], i) => ({ value: i, label: label(g, p) })), onchange: v => { ui = v; draw(); } });
-    const cSeg = seg({ label: 'which qubit controls', value: ctl, options: [{ value: 0, label: 'q0 controls q1' }, { value: 1, label: 'q1 controls q0' }], onchange: v => { ctl = v; draw(); } });
-    const circHost = h('div'), table = h('div', { class: 'table-wrap' }), formula = h('div', { class: 'formula', style: { fontSize: '1.05rem' } }), note = h('p', { class: 'note' });
-    body.append(h('div', { class: 'row' }, h('span', { class: 'panel-label', style: { margin: 0 }, text: 'U' }), uSeg.el, cSeg.el), circHost, formula, table, note);
-    function draw() {
-      const T = Theme.tokens(), [g, p] = US[ui], t = 1 - ctl;
-      const circ = { n: 2, cols: Q.builder(2).cg(g, [ctl], t, p).build().cols };
-      miniCircuit(circHost, circ);
-      const U = Q.unitary(circ), N = 4;
-      const on = i => ((i >> (1 - ctl)) & 1) === 1; // control bit set
-      let html = `<table class="dtable compact" style="width:auto"><thead><tr><th></th>${[0, 1, 2, 3].map(j => `<th class="m" style="text-align:center">in |${bits(j, 2)}⟩</th>`).join('')}</tr></thead><tbody>`;
-      for (let i = 0; i < N; i++) {
-        html += `<tr><th scope="row" class="m">out |${bits(i, 2)}⟩</th>`;
-        for (let j = 0; j < N; j++) {
-          const blk = on(i) && on(j) ? 'u' : !on(i) && !on(j) ? 'i' : 'z';
-          const bg = blk === 'u' ? G.U.rgba(T.accent, 0.18) : blk === 'i' ? G.U.rgba(T.q, 0.08) : 'transparent';
-          const v = cx(U.re[i * N + j], U.im[i * N + j], { d: 2 });
-          html += `<td class="m" style="text-align:center;background:${bg};${v === '0' ? `color:${T.muted}` : ''}">${v}</td>`;
-        }
-        html += '</tr>';
-      }
-      table.innerHTML = html + '</tbody></table>';
-      formula.innerHTML = ctl === 0 ? `C-U = |0⟩⟨0| ⊗ I + |1⟩⟨1| ⊗ ${label(g, p)}` : `C-U = I ⊗ |0⟩⟨0| + ${label(g, p)} ⊗ |1⟩⟨1|`;
-      note.innerHTML = `Blue cells: the part of the state where the control q${ctl} is 0, left exactly alone (the identity). Brass cells: where q${ctl} is 1, ${label(g, p)} acts on q${t}. The uncoloured cells are all zero: the gate never changes the control bit. ` +
-        (ctl === 0 ? 'With q0 as control the matrix is block diagonal: I in the top-left corner and U in the bottom-right.' : 'With q1 as control the same pattern is interleaved, because q1 is the right-hand bit of each label.');
-    }
-    draw();
-  });
-
-  /* ------------------------------------------------------------------ 3.3: measuring one qubit of a pair */
-  C.widget('partial-meas', body => {
-    const rng = Q.mulberry32(99), R3 = 1 / Math.sqrt(3);
-    const PRE = [
-      ['Bell (|00⟩ + |11⟩)/√2', () => Q.runCircuit(Q.builder(2).g('H', 0).cx(0, 1).build())],
-      ['Product |+⟩|0⟩', () => Q.runCircuit(Q.builder(2).g('H', 0).build())],
-      ['(|00⟩ + |01⟩ + |11⟩)/√3', () => { const s = new Q.State(2); s.re[0] = R3; s.re[1] = R3; s.re[3] = R3; return s; }],
-      ['Partly entangled: Ry(π/3), CNOT', () => Q.runCircuit(Q.builder(2).g('RY', 0, PI / 3).cx(0, 1).build())]
-    ];
-    let pi = 0, mq = 0, picked = null;
-    const pSeg = seg({ label: 'state', value: pi, options: PRE.map((d, i) => ({ value: i, label: d[0] })), onchange: v => { pi = v; picked = null; draw(); } });
-    const qSeg = seg({ label: 'qubit to measure', value: mq, options: [{ value: 0, label: 'measure q0' }, { value: 1, label: 'measure q1' }], onchange: v => { mq = v; picked = null; draw(); } });
-    const ketEl = h('div', { class: 'ket-line' }), cg = h('div'), before = h('div'), beforeCap = h('div', { class: 'caption' });
-    const circles = new CircleGrid(cg, { maxCols: 4 });
-    const bvBefore = new BlochView(before, { compact: true, maxSize: 170, shadow: false });
-    const br = [0, 1].map(() => { const bh = h('div'), cap = h('div', { class: 'readout' }), box = h('div', { class: 'stack', style: { padding: '10px', borderRadius: '10px' } }); return { bh, cap, box, bv: null }; });
-    br.forEach(b => { b.bv = new BlochView(b.bh, { compact: true, maxSize: 170, shadow: false }); b.box.append(b.cap, b.bh); });
-    const outc = h('div', { class: 'row' });
-    body.append(h('div', { class: 'row' }, pSeg.el), h('div', { class: 'row' }, qSeg.el, button('Measure it', () => { const P = probs(); picked = rng() < P[0] ? 0 : 1; draw(); }, 'btn primary'), button('Reset', () => { picked = null; draw(); }, 'btn')),
-      h('div', { class: 'grid2' }, h('div', { class: 'stack' }, h('p', { class: 'panel-label', text: 'The pair before the measurement' }), ketEl, cg),
-        h('div', { class: 'stack' }, h('p', { class: 'panel-label', text: 'The other qubit on its own, before' }), before, beforeCap)),
-      h('p', { class: 'panel-label', text: 'The two possible outcomes' }), h('div', { class: 'grid2' }, br[0].box, br[1].box), outc);
-    const state = () => PRE[pi][1]();
-    function probs() { const s = state(), P = [0, 0]; for (let i = 0; i < 4; i++) P[(i >> (1 - mq)) & 1] += s.re[i] ** 2 + s.im[i] ** 2; return P; }
-    function draw() {
-      const T = Theme.tokens(), s = state(), other = 1 - mq, P = probs();
-      circles.update(s.re, s.im, 2); ketEl.innerHTML = '|ψ⟩ = ' + ketExpr(s.re, s.im, 2);
-      const bo = s.bloch(other), L = Math.hypot(...bo);
-      bvBefore.set({ vectors: [{ v: bo, main: true }] });
-      beforeCap.innerHTML = `q${other} alone: arrow length ${num(L, 2)}${L < 0.999 ? '. Shorter than 1, so q' + other + ' has no pure state of its own.' : '. A pure state: the pair is not entangled.'}`;
-      [0, 1].forEach(m => {
-        const idx = [0, 1].map(x => mq === 0 ? (m << 1) | x : (x << 1) | m); // amplitudes that survive, ordered by the other qubit's value
-        const a = idx.map(i => [s.re[i], s.im[i]]), pm = P[m], b = br[m];
-        const ok = pm > 1e-12;
-        const v = ok ? [a[0][0], a[0][1], a[1][0], a[1][1]].map(x => x / Math.sqrt(pm)) : null;
-        b.bv.set({ vectors: ok ? [{ v: Q.blochOf(v), main: true }] : [] });
-        b.box.style.background = picked === m ? G.U.rgba(T.accent, 0.14) : picked === null ? T.surface2 : 'transparent';
-        b.box.style.opacity = picked !== null && picked !== m ? '0.45' : '1';
-        b.cap.innerHTML = `<b>q${mq} reads ${m}</b> · probability ${pct(pm)}<br>` + (ok ?
-          `keep ${idx.map(i => '|' + bits(i, 2) + '⟩').join(' and ')}, divide by √${num(pm, 3)}<br>q${other} becomes ${ketExpr([v[0], v[2]], [v[1], v[3]], 1)}` : 'this outcome never happens');
-      });
-      outc.innerHTML = picked === null ? '<span class="note">Before you measure, both branches are possible. Press "Measure it" to pick one with the Born-rule odds.</span>'
-        : `<span class="pill acc">q${mq} read ${picked}</span> <span class="note">The other branch is gone. q${other} is now in the state shown in the highlighted box, whatever happens to q${mq} afterwards.</span>`;
-    }
-    draw();
   });
 })(window);

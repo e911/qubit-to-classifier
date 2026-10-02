@@ -1,8 +1,8 @@
 /* Part V — Algorithms */
 (function (G) {
   'use strict';
-  const { h, num, angle, pct, slider, seg, button, Theme, animate, reduceMotion, bits, ketExpr, cx, rgba } = G.U;
-  const { BlochView, linePlot, svg, bars } = G.V;
+  const { h, num, angle, pct, slider, seg, button, Theme, animate, reduceMotion, bits } = G.U;
+  const { BlochView, linePlot, svg } = G.V;
   const Q = G.QSim, C = G.C, K = C.K, PI = Math.PI;
 
   /* ------------------------------------------------------------------ 5.1 */
@@ -17,6 +17,17 @@
   }
   C.add({
     id: 'teleport', part: 5, num: '5.1', title: 'Teleportation and superdense coding',
+    lede: 'Shared entanglement plus two classical bits moves a qubit\'s state from Alice to Bob without sending the qubit. The reverse trick sends two bits with one qubit.',
+    html: `
+      <h2>Teleportation</h2>
+      <p>Alice has a qubit in a state ${K('ψ')} that nobody knows. Alice and Bob already share a Bell pair. Alice applies a CNOT and an H to her two qubits and measures them. Each of the four outcomes is equally likely, and in each case Bob's qubit is already ${K('ψ')} up to a known Pauli error: nothing, X, Z, or both. Alice sends Bob her two bits, and Bob undoes the error.</p>
+      <p>Two things do <em>not</em> happen. Nothing travels faster than light: until Bob receives the bits his qubit on its own is a random coin. And the state is not copied: Alice's qubit ends up measured. (The <b>no-cloning theorem</b> forbids copying an unknown state.)</p>
+      ${C.bench('tp', 'Teleportation, step by step', 'Grey arrow on q2 = the original message')}
+      <h2>Superdense coding</h2>
+      <p>Run the idea backwards. Alice and Bob share a Bell pair. By applying I, X, Z or ZX to her half, Alice can turn it into any of the four Bell states. She sends Bob her one qubit; Bob measures in the Bell basis (CNOT, then H) and reads two bits.</p>
+      ${C.bench('sd', 'Superdense coding', 'Choose the two bits to send')}
+      ${C.keyIdea('Teleportation: entanglement + 2 classical bits → 1 qubit state. Superdense coding: entanglement + 1 qubit → 2 classical bits. Entanglement is a resource you spend.')}
+      ${C.tryThis(['Step the teleportation circuit to the end, then press "New outcomes" several times. Does q2 always match the grey arrow?', 'In the teleportation circuit, at step 7, which single-qubit arrows have length 0?', 'Send each of the four messages with superdense coding. Which Bell state does each create?'])}`,
     init(root, ctx) {
       const tp = new G.CircuitLab.Lab(C.body(root, 'tp'), { mode: 'guided', preset: 'teleport' });
       const sdBody = C.body(root, 'sd');
@@ -56,6 +67,19 @@
   }
   C.add({
     id: 'oracles', part: 5, num: '5.2', title: 'Oracles: Deutsch–Jozsa and Bernstein–Vazirani',
+    lede: 'A quantum algorithm can learn a global property of a function from a single call, by turning its answers into phases and letting them interfere.',
+    html: `
+      <p>An <b>oracle</b> is a black-box circuit for a function f: <span class="m">|x⟩|y⟩ → |x⟩|y ⊕ f(x)⟩</span>. If the extra qubit starts in ${K('−')}, phase kickback turns this into
+      <span class="m">|x⟩ → (−1)<sup>f(x)</sup>|x⟩</span>, and the extra qubit is left alone. The answer is now a phase.</p>
+      <p>The pattern is always the same: Hadamards query every x at once, the oracle writes phases, and Hadamards again make those phases interfere. The amplitude of output ${K('y')} is
+      <span class="m">(1/2ⁿ) Σ<sub>x</sub> (−1)<sup>f(x) + x·y</sup></span>.</p>
+      <ul>
+        <li><b>Deutsch–Jozsa.</b> Promise: f is either constant (the same for every x) or balanced (0 on exactly half the inputs). The amplitude of ${K('000')} is the average of (−1)<sup>f(x)</sup>: ±1 if constant, 0 if balanced. One query decides. A deterministic classical algorithm can need 2ⁿ⁻¹ + 1 queries.</li>
+        <li><b>Bernstein–Vazirani.</b> <span class="m">f(x) = s·x mod 2</span> for a hidden bit string s. After the final Hadamards the inputs read s exactly. Classically you need n queries.</li>
+      </ul>
+      ${C.bench('or', 'Oracle lab', 'Pick a function, then step through')}
+      <p>These speed-ups are modest in practice: a randomized classical algorithm settles Deutsch–Jozsa with high confidence in a few queries. Their value is the mechanism, which Simon's algorithm and Shor's algorithm push to an exponential advantage.</p>
+      ${C.keyIdea('Phase kickback turns function values into phases; Hadamards turn global patterns in those phases into a single measurable bit string.')}`,
     init(root, ctx) {
       const body = C.body(root, 'or');
       let key = 'b2', s = '101';
@@ -74,6 +98,19 @@
   /* ------------------------------------------------------------------ 5.3 */
   C.add({
     id: 'grover', part: 5, num: '5.3', title: 'Grover\'s search',
+    lede: 'Grover\'s algorithm finds one marked item among N in about (π/4)√N steps by repeatedly rotating the state toward the answer.',
+    html: `
+      <p>Start in the uniform superposition over N = 2ⁿ items. Then repeat two steps:</p>
+      <ol>
+        <li><b>Oracle:</b> flip the sign of the marked item's amplitude.</li>
+        <li><b>Diffusion:</b> reflect every amplitude about the mean amplitude, <span class="m">a → 2·mean − a</span>.</li>
+      </ol>
+      <p>The flipped amplitude sits far below the mean, so the reflection throws it far above. Each round the marked amplitude grows.</p>
+      <p><b>The geometric picture.</b> The state never leaves the plane spanned by ${K('w')} (the answer) and ${K('s′')} (the equal superposition of every other item). Each round is two reflections, and two reflections make a rotation by <span class="m">2θ</span>, where <span class="m">sin θ = 1/√N</span>. After k rounds the chance of measuring the answer is <span class="m">sin²((2k+1)θ)</span>.</p>
+      ${C.bench('gr', 'Grover step by step', 'Click a bar to choose which item is marked')}
+      <p>Stop at about <span class="m">(π/4)√N</span> rounds. Go further and the state rotates past the answer, and the success probability falls again. The √N speed-up is provably the best possible for unstructured search, so it is quadratic, not exponential.</p>
+      ${C.keyIdea('Grover is a rotation: each oracle-plus-diffusion round turns the state by a fixed angle 2θ toward the answer. Timing matters, because you can overshoot.')}
+      ${C.tryThis(['With N = 4, how many iterations reach certainty?', 'With N = 64, run past the optimum. How low does the success probability drop?', 'Press only "Oracle" twice. Why does nothing change overall?'])}`,
     init(root) {
       const body = C.body(root, 'gr');
       let n = 4, N = 16, w = 11, a = [], k = 0, half = false, trail = [];
@@ -138,6 +175,25 @@
   /* ------------------------------------------------------------------ 5.4 */
   C.add({
     id: 'qft', part: 5, num: '5.4', title: 'The quantum Fourier transform and phase estimation',
+    lede: 'The quantum Fourier transform writes a number into the phases of qubits. Phase estimation uses it to read out an eigenvalue, which is the engine inside Shor\'s algorithm.',
+    html: `
+      <div class="formula">QFT|x⟩ = (1/√N) Σ<sub>k</sub> e<sup>2πi·xk/N</sup> |k⟩</div>
+      <p>In the computational basis a number x is written in bits, each qubit up or down. In the <b>Fourier basis</b> the same number is written in phases. After the QFT every qubit sits on the equator, and qubit k (counting from the top, starting at 0) points at angle
+      <span class="m">2πx / 2<sup>k+1</sup></span>: the top qubit turns half a revolution per unit of x, the next a quarter, the next an eighth. It is counting, in phase.</p>
+      ${C.bench('qf', 'Counting in two bases', 'Top row: |x⟩ · bottom row: QFT|x⟩, viewed from above')}
+      <p>The QFT circuit needs only O(n²) gates, H and controlled phases (load "QFT" in the Circuit Lab). The catch is that you cannot read the Fourier coefficients out: a measurement gives one sample. The QFT pays off when the answer is concentrated on a few outcomes, as in phase estimation.</p>
+      <h2>Phase estimation</h2>
+      <p>Suppose <span class="m">U|u⟩ = e<sup>2πiφ</sup>|u⟩</span>. With t counting qubits in ${K('+')}, a controlled-U<sup>2ʲ</sup> from counting qubit j kicks back the phase <span class="m">2π·2ʲφ</span>. That is exactly the Fourier-basis picture of the number 2ᵗφ. An inverse QFT turns it into a bit string: a t-bit estimate of φ.</p>
+      <p>If φ has an exact t-bit binary expansion the answer is certain. Otherwise the result is one of the nearest t-bit fractions, the closest with probability at least 4/π² ≈ 0.405, and adding counting qubits sharpens the peak.</p>
+      ${C.bench('qpe', 'Phase estimation outcomes', 'Vertical line = true φ')}
+      ${C.keyIdea('The QFT moves information between bit values and phases. Phase estimation reads a phase by letting kickback write it and the inverse QFT convert it to bits.')}
+      ${C.tryThis(['Count from 0 to 7 with n = 3 and watch how fast each Fourier qubit turns.', 'Set φ = 0.375 with t = 3 counting qubits. Why is the answer certain?', 'Set φ = 0.3 and raise t from 3 to 7. How does the peak change?'])}
+      ${C.quizSection('Check yourself: Part V')}`,
+    quiz: [
+      { q: 'In teleportation, how many classical bits must Alice send to Bob?', options: ['None', 'One', 'Two', 'As many as needed to describe the state'], answer: 2, why: 'Her two measurement outcomes tell Bob which of the four Pauli corrections to apply.' },
+      { q: 'Grover search over N = 1,024 items needs roughly how many oracle calls?', options: ['10', '25', '512', '1,024'], answer: 1, why: '(π/4)√1024 = (π/4)·32 ≈ 25.' },
+      { q: 'Which effect do Deutsch–Jozsa and phase estimation both rely on?', options: ['Measurement collapse', 'Phase kickback', 'Cloning', 'Decoherence'], answer: 1, why: 'Both write information into phases of control qubits through controlled operations on an eigenstate.' }
+    ],
     init(root, ctx) {
       /* counting */
       {
@@ -201,73 +257,7 @@
         }
         draw();
       }
+      C.quiz(root.querySelector('[data-quiz]'), this.quiz);
     }
-  });
-
-  /* ------------------------------------------------------------------ 5.1: the four teleportation branches */
-  C.widget('tp-branches', body => {
-    let th = 1.2, ph = 0.8;
-    const sTh = slider({ label: 'message θ', min: 0, max: PI, step: 0.01, value: th, snapPi: true, fmt: angle, oninput: v => { th = v; draw(); } });
-    const sPh = slider({ label: 'message φ', min: 0, max: 2 * PI, step: 0.01, value: ph, snapPi: true, fmt: angle, oninput: v => { ph = v; draw(); } });
-    const msg = h('div', { class: 'ket-line' });
-    const grid = h('div', { class: 'spheres', style: { gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))' } });
-    body.append(h('div', { class: 'grid2' }, h('div', { class: 'stack' }, sTh.el, sPh.el), h('div', { class: 'stack' }, h('p', { class: 'panel-label', text: 'Message |ψ⟩ on q0' }), msg)),
-      h('p', { class: 'panel-label', text: 'Bob’s qubit q2 right after Alice measures, for each of her four results' }), grid,
-      h('p', { class: 'caption', text: 'Grey arrow: the message. Blue arrow: Bob’s qubit before he corrects it. After the listed correction, every branch matches the grey arrow.' }));
-    const cells = [0, 1, 2, 3].map(() => { const b = h('div'), cap = h('div', { class: 'caption', style: { textAlign: 'center' } }); grid.appendChild(h('div', { class: 'sphere-cell' }, b, cap)); return { bv: new BlochView(b, { compact: true, maxSize: 170, shadow: false }), cap }; });
-    // after CNOT(0→1) and H(0): outcome m0 m1 leaves Bob with X^m1 Z^m0 |ψ⟩
-    const fix = ['nothing', 'X', 'Z', 'X, then Z'], has = ['|ψ⟩', 'X|ψ⟩', 'Z|ψ⟩', 'XZ|ψ⟩'];
-    function draw() {
-      const T = Theme.tokens(), v = Q.stateFromBloch(th, ph), r = Q.blochOf(v);
-      msg.innerHTML = '|ψ⟩ = ' + ketExpr([v[0], v[2]], [v[1], v[3]], 1);
-      const circ = Q.builder(3).g('RY', 0, th).g('RZ', 0, ph).g('H', 1).cx(1, 2).cx(0, 1).g('H', 0).build();
-      const s = Q.runCircuit(circ);
-      for (let m = 0; m < 4; m++) {
-        const m0 = m >> 1, m1 = m & 1, i0 = (m0 << 2) | (m1 << 1), i1 = i0 | 1; // q0 q1 q2 = m0 m1 b
-        const pr = s.re[i0] ** 2 + s.im[i0] ** 2 + s.re[i1] ** 2 + s.im[i1] ** 2, n = Math.sqrt(pr);
-        const bob = [s.re[i0] / n, s.im[i0] / n, s.re[i1] / n, s.im[i1] / n];
-        cells[m].bv.set({ vectors: [{ v: r, color: T.muted, alpha: 0.8, dot: false, width: 2 }, { v: Q.blochOf(bob), main: true }] });
-        cells[m].cap.innerHTML = `Alice reads <b>${m0}${m1}</b> · ${pct(pr, 0)}<br>Bob holds ${has[m]}<br>he applies ${fix[m]}`;
-      }
-    }
-    draw();
-  });
-
-  /* ------------------------------------------------------------------ 5.2: the Hadamard transform as a pattern detector */
-  C.widget('walsh', body => {
-    let n = 3, f = [0, 1, 1, 0, 0, 1, 1, 0];
-    const nSeg = seg({ label: 'input bits', value: n, options: [{ value: 2, label: 'n = 2' }, { value: 3, label: 'n = 3' }], onchange: v => { n = v; f = new Array(2 ** n).fill(0); draw(); } });
-    const pres = h('div', { class: 'row tight' },
-      button('Constant 0', () => { f = f.map(() => 0); draw(); }, 'btn'),
-      button('Constant 1', () => { f = f.map(() => 1); draw(); }, 'btn'),
-      button('Balanced: f = x₀', () => { f = f.map((_, x) => (x >> (n - 1)) & 1); draw(); }, 'btn'),
-      button('Linear: f = s·x, s = 1…1', () => { f = f.map((_, x) => popc(x) & 1); draw(); }, 'btn'),
-      button('Random', () => { f = f.map(() => Math.random() < 0.5 ? 1 : 0); draw(); }, 'btn'));
-    const table = h('div', { class: 'table-wrap' }), out = h('div'), read = h('p', { class: 'note' });
-    body.append(h('div', { class: 'row' }, nSeg.el), pres, h('p', { class: 'caption', text: 'Click a cell in the f(x) row to flip that value of the function.' }), table, h('p', { class: 'panel-label', text: 'Output probabilities after the final Hadamards' }), out, read);
-    const popc = x => { let c = 0; while (x) { c += x & 1; x >>= 1; } return c; };
-    function draw() {
-      const T = Theme.tokens(), N = 2 ** n, sign = f.map(v => v ? -1 : 1);
-      const amp = []; for (let y = 0; y < N; y++) { let a = 0; for (let x = 0; x < N; x++) a += sign[x] * ((popc(x & y) & 1) ? -1 : 1); amp.push(a / N); }
-      const sq = (v, sm) => `<span style="display:inline-flex;width:22px;height:22px;border-radius:5px;align-items:center;justify-content:center;font-weight:700;font-size:13px;background:${v > 0 ? rgba(T.q, sm ? 0.18 : 0.85) : rgba(T.q2, sm ? 0.18 : 0.85)};color:${sm ? T.ink : T.surface}">${v > 0 ? '+' : '−'}</span>`;
-      let html = `<table class="dtable compact" style="width:auto"><thead><tr><th>x</th>${f.map((_, x) => `<th class="m" style="text-align:center">${bits(x, n)}</th>`).join('')}<th></th></tr></thead><tbody>`;
-      html += `<tr><th scope="row">f(x)</th>${f.map((v, x) => `<td style="text-align:center"><button type="button" class="btn" data-x="${x}" style="min-width:34px;padding:2px 8px">${v}</button></td>`).join('')}<td class="note">the oracle</td></tr>`;
-      html += `<tr><th scope="row">(−1)<sup>f(x)</sup></th>${sign.map(v => `<td style="text-align:center">${sq(v)}</td>`).join('')}<td class="note">phase after kickback</td></tr>`;
-      for (let y = 0; y < N; y++) html += `<tr><th scope="row" class="m">y = ${bits(y, n)}</th>${f.map((_, x) => `<td style="text-align:center">${sq((popc(x & y) & 1) ? -1 : 1, true)}</td>`).join('')}<td class="m">amp ${num(amp[y], 3)}</td></tr>`;
-      table.innerHTML = html + '</tbody></table>';
-      table.querySelectorAll('button[data-x]').forEach(b => b.addEventListener('click', () => { const x = +b.dataset.x; f[x] ^= 1; draw(); }));
-      bars(out, { labels: amp.map((_, y) => bits(y, n)), values: amp.map(a => a * a), max: 1, fmt: v => pct(v), valueName: 'probability', height: 140, yTicks: [0, 0.5, 1] });
-      const ones = f.reduce((a, b) => a + b, 0), lin = amp.findIndex(a => Math.abs(Math.abs(a) - 1) < 1e-9);
-      read.innerHTML = ones === 0 || ones === N ? `f is <b>constant</b>: every x gets the same sign, so the signs line up with the all-plus row y = ${bits(0, n)}, and all the probability lands there.`
-        : ones === N / 2 ? `f is <b>balanced</b>: the signs cancel against the all-plus row, so P(${bits(0, n)}) = 0${lin >= 0 ? `. This f is also linear, f(x) = s·x with s = ${bits(lin, n)}, so every bit of probability lands on y = s` : ''}.`
-          : `f is neither constant nor balanced. Each output amplitude is the average agreement between the sign row and one ± row, so the probability spreads out.`;
-    }
-    draw();
-  });
-
-  /* ------------------------------------------------------------------ 5.4: the QFT circuit, step by step */
-  C.widget('qft-lab', (body, ctx) => {
-    const lab = new G.CircuitLab.Lab(body, { mode: 'guided', preset: 'qft' });
-    ctx.onLeave(() => lab.stop());
   });
 })(window);

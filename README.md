@@ -1,6 +1,8 @@
 # Qubit to Classifier
 
-An interactive, visual course on quantum circuits that ends with hands-on quantum machine learning. Everything on the page is computed live in the browser by an exact state-vector simulator: drag Bloch spheres, step through circuits gate by gate, watch entanglement shrink the arrows, and train a quantum classifier with parameter-shift gradients.
+An interactive, visual course on quantum computing from the very beginning, ending with hands-on quantum machine learning. It starts with complex numbers and matrices, so the only background it assumes is high-school algebra and a little trigonometry.
+
+Everything on the page is computed live in the browser by an exact state-vector simulator: drag Bloch spheres, step through circuits gate by gate, watch entanglement shrink the arrows, and train a quantum classifier with parameter-shift gradients.
 
 No frameworks, no build step, no server code: plain HTML, CSS and JavaScript.
 
@@ -8,14 +10,24 @@ No frameworks, no build step, no server code: plain HTML, CSS and JavaScript.
 
 | Part | Chapters |
 |---|---|
+| 0 · The math toolkit | 0.1 Complex numbers · 0.2 Vectors, matrices and Dirac notation · 0.3 Eigenvectors, unitary and Hermitian matrices |
 | I · One qubit | 1.1 Bits and qubits · 1.2 Phase · 1.3 The Bloch sphere |
 | II · Gates and measurement | 2.1 Gates are rotations · 2.2 Measurement and bases (incl. tomography) |
 | III · Many qubits | 3.1 Tensor product · 3.2 Multi-qubit gates and phase kickback · 3.3 Entanglement and CHSH |
-| IV · Circuits | 4.1 Circuit Lab (drag-and-drop, step-through, unitary view, Qiskit export) · 4.2 Interference · 4.3 Identities and universality |
-| V · Algorithms | 5.1 Teleportation and superdense coding · 5.2 Deutsch–Jozsa and Bernstein–Vazirani · 5.3 Grover · 5.4 QFT and phase estimation |
-| VI · Noise and hardware | 6.1 Noise channels on the Bloch ball · 6.2 T1/T2, routing, mitigation vs correction |
-| VII · Quantum machine learning | 7.1 Overview · 7.2 Encoding data · 7.3 Circuits as models · 7.4 Parameter-shift rule · 7.5 Train a classifier · 7.6 Quantum kernels · 7.7 Barren plateaus · 7.8 Where to go next |
-| Appendix | Glossary and conventions |
+| IV · Circuits | 4.1 Circuit Lab (drag-and-drop, step-through, unitary view, Qiskit export, exercises) · 4.2 Interference · 4.3 Identities and universality |
+| V · Algorithms | 5.1 Teleportation and superdense coding · 5.2 Deutsch–Jozsa and Bernstein–Vazirani · 5.3 Grover · 5.4 QFT, phase estimation and Shor |
+| VI · Noise and hardware | 6.1 Density matrices and noise channels · 6.2 T1/T2, routing, readout, mitigation vs correction |
+| VII · Quantum machine learning | 7.1 Machine-learning basics and the variational loop · 7.2 Encoding data · 7.3 Circuits as models · 7.4 Parameter-shift rule · 7.5 Train a classifier · 7.6 Quantum kernels · 7.7 Barren plateaus · 7.8 Where to go next (NumPy simulator, PennyLane code, reading list) |
+| Appendix | A Glossary, notation and conventions (searchable, about 160 terms) · B Formula sheet |
+
+Every chapter follows the same pattern:
+
+- **In this chapter you will**: the goals, and the earlier chapters it builds on.
+- **Worked examples** with every step of the arithmetic shown (86 in total).
+- **Math behind it**: optional derivations, folded away on a first read.
+- **Common confusion**: the mistakes nearly everyone makes once.
+- **Interactive panels** (60 in total) next to the idea they illustrate.
+- **Key idea**, **Try this** experiments, a **Recap**, and a short **quiz** that explains every answer (167 questions in all).
 
 ## Run it locally
 
@@ -48,6 +60,8 @@ python3 -m http.server 8000
 
 The empty `.nojekyll` file tells GitHub Pages to serve the files as they are, without running Jekyll.
 
+Updating an existing site: replace the files in your repository with these, then `git add . && git commit -m "Expanded chapters" && git push`.
+
 ## Project structure
 
 ```
@@ -59,8 +73,11 @@ src/
   util.js             DOM helpers, number/ket formatting, theme tokens, phase colours, controls
   viz.js              Bloch sphere, circle notation, bar and line charts, heatmaps, matrices
   circuit.js          circuit renderer, Circuit Lab, worked examples, Qiskit export
-  base.js             chapter registry, quiz and prose helpers
-  ch1.js … ch7b.js    the chapters (text + interactive benches)
+  base.js             chapter registry and the prose helpers (worked examples, quizzes, figures …)
+  ch0.js … ch7b.js    interactive code for each part: chapter registration and the panels
+  text/
+    p0.js … p7.js     the words for each part: ledes, explanations, worked examples, quizzes
+    appendix.js       conventions, symbols, Greek letters and the formula sheet
   app.js              navigation, hash routing, home page, progress
 test/
   sim.test.js         358 physics checks (Bell/GHZ, QFT, Grover, teleportation, identities …)
@@ -73,10 +90,27 @@ tools/
 
 ## Editing
 
-- Each chapter is one `C.add({ id, part, num, title, lede, html, init })` call. `html` is the prose; `init(root, ctx)` builds the interactive benches. The order of `C.add` calls (and of the script tags) is the order in the menu.
-- Links between chapters are plain hashes such as `#lab` or `#train`.
-- Colours and fonts are CSS variables at the top of `src/styles.css`; the dark theme redefines the same variables.
-- Conventions: qubit 0 is the top wire and the leftmost bit, `|q0 q1 …⟩` (Qiskit prints the reverse); gate matrices follow Nielsen & Chuang and Qiskit.
+A chapter is assembled from three places:
+
+| Where | What | Example |
+|---|---|---|
+| `src/chN.js` | `C.add({ id, part, num, title, init })`: registers the chapter; `init(root, ctx)` fills its panels | `C.add({ id: 'bloch', part: 1, num: '1.3', title: 'The Bloch sphere', init(root) { … } })` |
+| `src/text/pN.js` | `C.text(id, { lede, html, quiz })`: the words | `C.text('bloch', { lede: '…', html: \`…\`, quiz: [ … ] })` |
+| `src/chN.js` | `C.widget(benchId, fn(body, ctx, root))`: an extra panel, filled automatically when the chapter opens | `C.widget('bloch-pair', body => { … })` |
+
+The order of the `C.add` calls (and of the script tags) is the order in the menu. Inside `html`, these helpers from `src/base.js` keep every chapter consistent:
+
+- `C.objectives(items, prereqIds)`, `C.recap(items)`, `C.keyIdea(text)`, `C.tryThis(items)`
+- `C.worked(title, steps, after)`, `C.pitfall(title, html)` (common confusion), `C.deeper(title, html)` (math behind it), `C.define(term, html)`
+- `C.bench(id, title, hint)`: a panel; its id must match a `C.body(root, id)` in `init` or a `C.widget(id, …)`
+- `C.circ(B => B(2).g('H', 0).cx(0, 1), { caption })`: a static circuit figure drawn with the simulator's circuit builder
+- `C.F(formula)`, `C.M(inline)`, `C.mat(rows)`, `C.vec(items)`, `C.align(rows)`, `C.table(head, rows)`
+- `C.ref('lab')`: a link to another chapter, shown as its number and title
+- `C.quizSection()` plus `quiz: [{ q, options, answer, why }]`. Write the options in any order; they are shown in a fixed shuffled order so the right answer moves around.
+
+Colours and fonts are CSS variables at the top of `src/styles.css`; the dark theme redefines the same variables.
+
+Conventions: qubit 0 is the top wire and the leftmost bit, `|q0 q1 …⟩` (Qiskit prints the reverse); gate matrices follow Nielsen & Chuang and Qiskit. Appendix A lists every convention and how other libraries differ.
 
 ## Tests
 
@@ -86,8 +120,9 @@ node test/qml.test.js        # QML toolkit (prints small result tables)
 
 # browser tests (optional)
 pip install playwright && python -m playwright install chromium
-python3 test/smoke.py        # add --shots to save screenshots in test/screenshots/
-python3 test/interact.py
+python3 test/smoke.py        # every chapter: no errors, no sideways scrolling, every panel and quiz filled in
+python3 test/smoke.py --only complex,linalg --shots   # some chapters, with screenshots in test/screenshots/
+python3 test/interact.py     # Circuit Lab presets, teleportation, quizzes, training step, glossary search …
 ```
 
 ## Single-file version
